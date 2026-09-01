@@ -1,87 +1,88 @@
 @import "tailwindcss";
 
-/* KAverASTREAM — dark esports redesign (anti-slop)
-   Solid near-black surfaces, ONE flat emerald accent, no glass blur / no neon glow.
-   Fonts: Space Grotesk (display) + IBM Plex Sans (body/data) — sporty-technical. */
-
+/* BALLSTREAM-STYLE design tokens (spec §3) */
 :root {
-  --bg: #0a0f0b;             /* near-black with green hint, not pure #000 */
-  --surface: #111711;        /* raised solid surface */
-  --surface-2: #161d17;      /* hover/raised */
-  --border: #223027;
-  --text: #e6efe8;
-  --muted: #8fa396;
-  --accent: #22c55e;         /* single flat green accent */
-  --accent-dim: #166534;
-  --accent-ink: #04150a;     /* text on accent */
-  --live: #ef4444;           /* live indicator only, restrained */
+  --background: #080d14;
+  --surface: #0d141d;
+  --surface-elevated: #111a25;
+  --surface-hover: #17212d;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
+
+  --text-primary: #f5f7fa;
+  --text-secondary: #9aa5b1;
+  --text-muted: #687482;
+
+  --accent: #39e75f;
+  --accent-soft: rgba(57, 231, 95, 0.12);
+
+  --live: #ff3b30;
+  --warning: #ffb020;
+
+  --overlay: rgba(0, 0, 0, 0.55);
 }
 
 @theme inline {
-  --color-background: var(--bg);
-  --color-foreground: var(--text);
-  --color-muted-foreground: var(--muted);
-  --color-border: var(--border);
+  --color-background: var(--background);
   --color-surface: var(--surface);
-  --color-surface-2: var(--surface-2);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-surface-hover: var(--surface-hover);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-foreground: var(--text-primary);
+  --color-muted-foreground: var(--text-secondary);
+  --color-muted-soft: var(--text-muted);
   --color-accent: var(--accent);
-  --color-accent-dim: var(--accent-dim);
-  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
   --color-live: var(--live);
-  --font-sans: "Space Grotesk", system-ui, sans-serif;
-  --font-mono: "IBM Plex Mono", monospace;
-}
-
-html {
-  background: var(--bg);
+  --color-warning: var(--warning);
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  background: var(--background);
+  color: var(--text-primary);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* display / headings */
-h1, h2, h3, .display {
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-/* solid card, flat border, no blur/no glow */
-.card {
+/* spec-spacing is 8px-based; cards: pad 16, radius 12, border */
+.bstream-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 12px;
+  padding: 16px;
 }
-.card:hover {
-  border-color: var(--accent-dim);
+.bstream-card-hover {
+  transition: transform 160ms ease-out, background 160ms ease-out, border-color 160ms ease-out;
+}
+.bstream-card-hover:hover {
+  transform: translateY(-2px);
+  background: var(--surface-hover);
 }
 
-/* accent button (flat, solid) */
+/* accent button */
 .btn-accent {
   background: var(--accent);
-  color: var(--accent-ink);
+  color: #04120a;
   font-weight: 600;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 .btn-accent:hover {
-  filter: brightness(1.08);
+  filter: brightness(1.06);
 }
-
 .btn-ghost {
-  background: transparent;
+  background: var(--surface);
   border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 8px;
+  color: var(--text-primary);
+  border-radius: 10px;
 }
 .btn-ghost:hover {
-  background: var(--surface-2);
+  background: var(--surface-hover);
 }
 
-/* thin hairline divider */
-.hairline {
-  border-color: var(--border);
-}
+/* subtle scrollbar */
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+*::-webkit-scrollbar-track { background: transparent; }
