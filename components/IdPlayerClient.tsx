@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { IdChannel, displayUrl, fetchChannel } from "@/lib/idtv";
+import { displayUrl, fetchChannel, IdChannel } from "@/lib/idtv";
 
 declare global {
   interface Window {
@@ -26,7 +26,6 @@ export default function IdPlayerClient({ id }: { id: string }) {
   const [ch, setCh] = useState<IdChannel | null>(null);
   const [state, setState] = useState("loading");
   const [err, setErr] = useState<string | null>(null);
-  const [viaProxy, setViaProxy] = useState(false);
   const hlsRef = useRef<any>(null);
 
   useEffect(() => {
@@ -40,20 +39,15 @@ export default function IdPlayerClient({ id }: { id: string }) {
         setCh(found);
 
         const src = displayUrl(found.url);
-        if (!src) return setState("err"), setErr("Sumber stream tidak didukung browser (multicast/udp).");
-        setViaProxy(src.startsWith("/api/"));
+        if (!src) {
+          return setState("err"), setErr("Sumber tidak CORS-open — tidak bisa diputar di browser.");
+        }
 
         const video = videoRef.current;
         if (!video) return;
 
         if (window.Hls && window.Hls.isSupported()) {
-          hls = new window.Hls({
-            enableWorker: true,
-            lowLatencyMode: false,
-            xhrSetup: (xhr: any) => {
-              xhr.withCredentials = false;
-            },
-          });
+          hls = new window.Hls({ enableWorker: true, lowLatencyMode: false });
           hlsRef.current = hls;
           hls.loadSource(src);
           hls.attachMedia(video);
@@ -61,16 +55,11 @@ export default function IdPlayerClient({ id }: { id: string }) {
             if (live) { setState("playing"); video.play().catch(() => {}); }
           });
           hls.on(window.Hls.Events.ERROR, (_: any, data: any) => {
-            if (data.fatal) {
-              if (data.type === "networkError") {
-                setErr("Jaringan gagal (mungkin geo-block/offline). Coba channel lain.");
-              } else {
-                setErr("Stream error: " + (data.details ?? "unknown"));
-              }
+            if (data?.fatal) {
+              setErr("Stream error: " + (data.details ?? "network"));
             }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          // Safari native
           video.src = src;
           setState("playing");
           video.play().catch(() => {});
@@ -93,17 +82,10 @@ export default function IdPlayerClient({ id }: { id: string }) {
       <Link href="/idtv" className="text-sm text-muted-foreground hover:text-zinc-50">
         ← Indonesia TV
       </Link>
-      <div className="flex items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{ch?.name ?? id}</h1>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            {ch?.group && <span className="rounded-md bg-white/10 px-2 py-0.5">{ch.group}</span>}
-            {viaProxy && (
-              <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-amber-300">
-                via proxy
-              </span>
-            )}
-          </div>
+      <div>
+        <h1 className="text-2xl font-bold">{ch?.name ?? id}</h1>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          Native HLS · {ch?.group || "Indonesia"}
         </div>
       </div>
 
@@ -114,7 +96,7 @@ export default function IdPlayerClient({ id }: { id: string }) {
           controls
           autoPlay
           playsInline
-          crossOrigin={viaProxy ? undefined : "anonymous"}
+          crossOrigin="anonymous"
         />
         {state === "loading" && (
           <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
@@ -126,6 +108,12 @@ export default function IdPlayerClient({ id }: { id: string }) {
             {err}
           </div>
         )}
+      </div>
+
+      <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200/80">
+        Hanya channel CORS-open yang bisa diputar native di browser. Channel luar
+        (menggunakan CDN non-CORS / geo-block) sengaja tidak ditampilkan supaya
+        tidak ada yang gagal-buffer.
       </div>
     </div>
   );
