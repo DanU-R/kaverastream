@@ -137,39 +137,43 @@ export default function HomeClient() {
   return (
     <div className="space-y-8">
       {/* Controls */}
-      <div className="sticky top-16 z-30 space-y-3 rounded-2xl border border-white/10 bg-[#051424]/85 p-4 backdrop-blur-xl">
+      <div className="sticky top-16 z-30 space-y-3 rounded-xl border hairline bg-background/95 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="🔍 Cari tim / liga / event…"
-            className="min-w-[220px] flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm focus:outline-none focus:border-primary/40"
+            placeholder="Cari tim / liga / event…"
+            className="min-w-[220px] flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:border-accent-dim"
           />
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortMode)}
-            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
           >
             <option value="live">Live dulu</option>
-            <option value="viewers">Terpopuler (viewers)</option>
+            <option value="viewers">Terpopuler</option>
             <option value="kickoff">Jadwal</option>
             <option value="az">A–Z</option>
           </select>
           <button
             onClick={() => setShowEsx((v) => !v)}
-            className={`rounded-lg px-3 py-2 text-sm transition ${showEsx ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground"}`}
+            className={`rounded-lg px-3 py-2 text-sm transition ${showEsx ? "bg-accent/15 text-accent" : "bg-surface text-muted-foreground"}`}
           >
             EsportEx {showEsx ? "✓" : "✗"}
           </button>
           <Link
             href="/multiview"
-            className="rounded-lg bg-white/5 px-3 py-2 text-sm text-muted-foreground transition hover:bg-white/10 hover:text-zinc-50"
+            className="rounded-lg bg-surface px-3 py-2 text-sm text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
           >
-            🖥 MultiView
+            MultiView
           </Link>
+          <span className="ml-auto inline-flex items-center gap-1.5 rounded-md border hairline px-2.5 py-1.5 font-mono text-xs text-accent">
+            <span className="h-2 w-2 rounded-full bg-live" />
+            {liveNowFeed.length} live
+          </span>
           {selectedCats.size > 0 && (
-            <button onClick={() => setSelectedCats(new Set())} className="rounded-lg bg-white/5 px-3 py-2 text-sm text-muted-foreground hover:text-zinc-50">
-              Reset kategori
+            <button onClick={() => setSelectedCats(new Set())} className="rounded-lg bg-surface px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
+              Reset
             </button>
           )}
         </div>
@@ -179,7 +183,7 @@ export default function HomeClient() {
             <button
               key={c}
               onClick={() => toggleCat(c)}
-              className={`rounded-full px-2.5 py-1 text-xs transition ${selectedCats.has(c) ? "bg-primary/25 text-primary" : "bg-white/5 text-muted-foreground hover:bg-white/10"}`}
+              className={`rounded-full border px-2.5 py-1 text-xs transition ${selectedCats.has(c) ? "border-accent-dim bg-accent/10 text-accent" : "border-border bg-surface text-muted-foreground hover:text-foreground"}`}
             >
               {c}
             </button>
@@ -195,14 +199,11 @@ export default function HomeClient() {
         <>
           {/* Live Now section */}
           <section>
-            <div className="mb-4 flex items-center gap-3">
-              <span className="relative flex h-3 w-3">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
-              </span>
-              <h2 className="text-2xl font-bold">
+            <div className="mb-4 flex items-center gap-3 border-b hairline pb-2">
+              <span className="h-2.5 w-2.5 rounded-full bg-live" />
+              <h2 className="text-xl font-semibold">
                 Live Now{" "}
-                <span className="text-sm font-normal text-muted-foreground">({liveNowFeed.length})</span>
+                <span className="font-mono text-sm text-muted-foreground">({liveNowFeed.length})</span>
               </h2>
             </div>
             {liveNowFeed.length ? (
@@ -222,7 +223,7 @@ export default function HomeClient() {
 
           {/* Upcoming / rest */}
           <section>
-            <h2 className="mb-4 text-2xl font-bold">Upcoming & Lainnya</h2>
+            <h2 className="mb-4 border-b hairline pb-2 text-xl font-semibold">Upcoming &amp; Lainnya</h2>
             {upcomingFeed.length ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {upcomingFeed.map((i) =>

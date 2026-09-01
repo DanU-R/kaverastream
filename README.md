@@ -1,39 +1,34 @@
-# KaveraStream — Sports + IPTV
+# KaveraStream
 
-Unified sports & IPTV dashboard. Consumes two public data sources. Built with
-Next.js 16 (App Router) + Tailwind. All data fetched client-side (both APIs send
-`Access-Control-Allow-Origin: *` — no backend needed).
+Unified live-sports + IPTV dashboard. Dark-esports UI (solid surfaces, flat green
+accent, Space Grotesk / IBM Plex type). Built with Next.js 16 (App Router) +
+Tailwind v4. All data fetched client-side from public endpoints — no backend.
 
-## Data sources (merged endpoints)
+## Sources (merged feed)
 
-### 1. Live Sports — `https://api.ppv.st/api`  (ppv/rushstreams network)
-| Endpoint | Use |
-|---|---|
-| `GET /api/streams` | Full live catalog (11 categories, varies ~176+ events) |
-| `GET /api/streams/{id}` | Event detail + player source |
-| `GET /api/vods` | On-demand catalog |
-| `GET /api/vods/{id}` | VOD detail (m3u8 source) |
+### 1. Live Sports — `https://api.ppv.st/api`  (PPW / rushstreams network)
+- `GET /api/streams` — live catalog (176+ events, 11 categories)
+- `GET /api/streams/{id}` — event detail + embed source
+- `GET /api/vods` + `/api/vods/{id}` — on-demand catalog
 
-### 2. IPTV Channels — `https://carryflix.cloud/tv.json`  (carryflix network)
-94 live DASH channels (CENC-DRM, clearKeys embedded). Fetched with cache-buster.
-Channel ids map to broadcast names (beIN, DAZN, Sky, Milan/Inter TV, UFC, F1 TV…).
-
-### 3. Indonesia TV — public Indonesian playlist (`riotryulianto/iptv-playlists`)
-62 local+premium channels (ANTV, RCTI, Indosiar, SCTV, Metro TV, CNN/CNBC ID,
-TVRI, MNC, Trans7, NET, DAAI, Kompas, plus cinema/sports premium…). Served via a
-**serverless HLS proxy** (`/api/p/stream`) that fetches upstream server-side and
-full-rebases every manifest/segment URI → no CORS / client-DNS issues.
+### 2. EsportEx — `https://api.esportex.site/api/streams`  (Nobaryu backend)
+- `GET /api/streams` — 168 events (football 92, amfootball 26, baseball 15, …)
+- Playback: numeric `ppv/{id}` tokens resolve via the shared PPW network
+  (`api.ppv.st/api/streams/{id}` → embedindia iframe). Non-ppv tokens
+  (`so/`, `em/`, `wec/`) are marked **unplayable** (backend is anti-hotlink).
 
 ## Features
-- **Live** — Live Now (auto-refresh + viewer count), Upcoming per category
-- **Event detail** — embedded player frame
-- **IPTV** — searchable 94-channel grid + DRM player (Shaka Player + clearKeys)
-- **Indonesia** — searchable/groupable 62-channel country grid + HLS player (proxy-backed)
-- **On-Demand** — VOD catalog + HLS playback
+- **Live tab** — merged PPW + EsportEx feed; search, multi-category filter,
+  4-way sort (live / viewers / jadwal / A–Z), auto-refresh 30s, live count pill.
+- **EsportEx** — 168-event catalog, LIVE/UPCOMING/ENDED badges, sport filter,
+  multi-source server switcher (dropdown + ganti-server failover), ppv-priority.
+- **MultiView** — watch several live streams at once in a grid.
+- **On-Demand** — VOD catalog + playback.
 
 ## Stack
-- Next.js 16.3.4 (App Router, Turbopack, TypeScript), Tailwind CSS v4
-- Shaka Player 4.12.4 (CDN) for IPTV DASH/DRM playback
+- Next.js 16.3.4 (App Router, Turbopack, TypeScript) · Tailwind CSS v4
+- Fonts: Space Grotesk / IBM Plex (Google Fonts)
+- Player embeds: PPW (embedindia) iframes, EsportEx player iframes, Shaka/hls.js for local
 
 ## Run locally
 ```bash
@@ -43,24 +38,31 @@ npm run dev        # http://localhost:3000
 
 ## Deploy to Vercel
 1. Push this repo to GitHub.
-2. Import in Vercel (framework: Next.js, auto-detected).
+2. Import in Vercel (framework: Next.js, auto-detected). High-traffic build:
+   choose a region close to your audience (e.g. Singapore) if streaming from ID.
 3. Optional env (defaults already correct):
-   - `NEXT_PUBLIC_API_BASE=https://api.ppv.st/api`
-   - `NEXT_PUBLIC_IPTV_TV_URL=https://carryflix.cloud/tv.json`
-4. Deploy. All routes are `force-dynamic` so data always refreshes.
+   - `NEXT_PUBLIC_API_BASE=https://api.ppv.st/api`   (Live)
+   - `NEXT_PUBLIC_ESX_API=https://api.esportex.site/api/streams`  (EsportEx)
+4. Deploy. All routes are `force-dynamic` — data refreshes on every visit.
 
-> Vercel CLI: `npx vercel --prod`. Build verified: `npm run build` passes clean.
+> Vercel CLI: `npx vercel --prod`. Build verified: `npm run build`.
 
 ## Structure
 ```
 app/
-  page.tsx            # home (Live Now + categories)
-  event/[id]/         # sports event detail + player
-  iptv/               # IPTV channel grid
-  iptv/[id]/          # IPTV DRM player (Shaka + clearKeys)
-  vods/               # on-demand catalog
-  vod/[id]/           # vod detail + playback
-components/           # client components
-lib/api.ts            # sports API client
-lib/iptv.ts           # IPTV tv.json client + channel-name resolver
+  page.tsx            # Live tab (merged PPW + EsportEx feed)
+  esportex/           # EsportEx catalog + event player
+  event/[id]/         # PPW event detail + embed
+  multiView/          # multi-stream watch grid
+  vods/ + vod/[id]/   # on-demand catalog + player
+components/           # client components (HomeClient, EsxClient, EventCard, ...)
+lib/api.ts            # PPW streams/VOD client
+lib/esportex.ts       # EsportEx catalog + token decode + source resolve
 ```
+
+## Notes
+- EsportEx events without a numeric `ppv/` source (badminton/race/tennis) are
+  marked **Tidak tersedia** — their resolve API (`data.esportex.site`) is
+  anti-hotlink and not playable from outside.
+- PPW/embedindia playback is iframe-based (browser-handled) — same as the
+  upstream rushstreams/ew playlist model.

@@ -39,9 +39,9 @@ export default function VodsClient() {
               <a
                 key={v.id}
                 href={`/vod/${v.id}`}
-                className="group rounded-xl border border-white/10 bg-zinc-900 overflow-hidden hover:border-white/25 transition"
+                className="group rounded-xl border border-border bg-surface overflow-hidden hover:border-border transition"
               >
-                <div className="relative aspect-video bg-zinc-800">
+                <div className="relative aspect-video bg-surface-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={v.poster}
@@ -68,7 +68,7 @@ export default function VodsClient() {
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300 py-20 text-center">
+    <div className="rounded-xl border border-live/30 bg-live/10 p-4 text-live py-20 text-center">
       Failed to load: {msg}
     </div>
   );

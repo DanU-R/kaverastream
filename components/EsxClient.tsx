@@ -37,10 +37,13 @@ export default function EsxClient() {
     };
   }, []);
 
-  const liveCount = useMemo(() => events.filter((e) => status(e) === "live").length, [events]);
+  const liveCount = useMemo(
+    () => events.filter((e) => e.playable && status(e) === "live").length,
+    [events]
+  );
   const list = useMemo(() => {
     let l = events;
-    if (filter === "live") l = l.filter((e) => status(e) === "live");
+    if (filter === "live") l = l.filter((e) => e.playable && status(e) === "live");
     else if (filter === "upcoming") l = l.filter((e) => status(e) === "upcoming");
     if (cat !== "All") l = l.filter((e) => e.category === cat);
     if (q.trim()) {
@@ -49,8 +52,12 @@ export default function EsxClient() {
         (e) => e.tag.toLowerCase().includes(s) || e.league.toLowerCase().includes(s)
       );
     }
-    // prioritize live first
-    return [...l].sort((a, b) => Number(status(b) === "live") - Number(status(a) === "live"));
+    // prioritize playable + live first
+    return [...l].sort(
+      (a, b) =>
+        Number(b.playable) - Number(a.playable) ||
+        Number(status(b) === "live") - Number(status(a) === "live")
+    );
   }, [events, cat, q, filter, liveCount]);
 
   return (
@@ -58,26 +65,26 @@ export default function EsxClient() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">
-            EsportEx <span className="text-primary">· Live</span>
+            EsportEx <span className="text-accent">· Live</span>
           </h1>
           <p className="text-sm text-muted-foreground">
             {events.length} events —{" "}
             {liveCount > 0 && (
               <span className="inline-flex items-center gap-1.5 text-emerald-300">
-                <span className="h-2 w-2 animate-pulse rounded-full bg-primary" />
+                <span className="h-2 w-2 animate-pulse rounded-full text" />
                 {liveCount} live sekarang
               </span>
             )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex overflow-hidden rounded-lg border border-white/10 text-sm">
+          <div className="flex overflow-hidden rounded-lg border border-border text-sm">
             {(["all", "live", "upcoming"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
                 className={`px-3 py-1.5 capitalize transition ${
-                  filter === f ? "bg-white/15 text-zinc-50" : "text-muted-foreground hover:text-zinc-50"
+                  filter === f ? "bg-surface-2 text-zinc-50" : "text-muted-foreground hover:text-zinc-50"
                 }`}
               >
                 {f === "live" ? (liveCount ? `Live (${liveCount})` : "Live") : f}
@@ -87,7 +94,7 @@ export default function EsxClient() {
           <select
             value={cat}
             onChange={(e) => setCat(e.target.value)}
-            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
           >
             {cats.map((c) => (
               <option key={c} value={c}>
@@ -99,7 +106,7 @@ export default function EsxClient() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Cari tim / liga…"
-            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm focus:outline-none focus:border-white/30"
+            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:border-white/30"
           />
         </div>
       </div>
@@ -107,11 +114,11 @@ export default function EsxClient() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="h-56 animate-pulse rounded-xl bg-white/5" />
+            <div key={i} className="h-56 animate-pulse rounded-xl bg-surface" />
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
+        <div className="rounded-xl border border-live/30 bg-live/10 p-4 text-live">
           Gagal muat: {error}
         </div>
       ) : (
@@ -120,7 +127,7 @@ export default function EsxClient() {
             <Link
               key={e.id}
               href={`/esportex/${e.id}`}
-              className="group glass overflow-hidden rounded-2xl transition hover:border-primary/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
+              className="group glass overflow-hidden rounded-2xl transition hover:border-accent-dim/60 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
             >
               <div className="relative aspect-video bg-surface-dim overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -131,20 +138,22 @@ export default function EsxClient() {
                   loading="lazy"
                 />
                 <div className="absolute top-2 left-2 flex gap-2">
-                  <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs">{e.category}</span>
-                  {status(e) === "live" && (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-tertiary px-2 py-0.5 text-xs font-bold text-on-tertiary-container">
+                  <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs">{e.category}</span>
+                  {!e.playable ? (
+                    <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs font-semibold text-zinc-300">
+                      ⚠ Tidak tersedia
+                    </span>
+                  ) : status(e) === "live" ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md bg-live px-2 py-0.5 text-xs font-bold text-white">
                       <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                       LIVE
                     </span>
-                  )}
-                  {status(e) === "upcoming" && (
-                    <span className="rounded-md bg-secondary/90 px-2 py-0.5 text-xs font-bold text-on-secondary">
+                  ) : status(e) === "upcoming" ? (
+                    <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-bold text-accent">
                       UPCOMING
                     </span>
-                  )}
-                  {status(e) === "ended" && (
-                    <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-muted-foreground">
+                  ) : (
+                    <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
                       ENDED
                     </span>
                   )}

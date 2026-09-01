@@ -28,7 +28,7 @@ export default function VodClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="rounded-2xl overflow-hidden bg-black border border-white/10">
+      <div className="rounded-2xl overflow-hidden bg-black border border-border">
         {isHls ? (
           <video
             className="aspect-video w-full"
@@ -52,10 +52,10 @@ export default function VodClient({ id }: { id: string }) {
           <div>
             <h1 className="text-2xl font-bold">{vod.name}</h1>
             <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-              <span className="rounded-md bg-white/10 px-2 py-1">
+              <span className="rounded-md bg-surface-2 px-2 py-1">
                 {new Date(vod.event_date * 1000).toLocaleDateString()}
               </span>
-              <span className="rounded-md bg-white/10 px-2 py-1">👁 {vod.views}</span>
+              <span className="rounded-md bg-surface-2 px-2 py-1">👁 {vod.views}</span>
             </div>
           </div>
         </div>
@@ -74,9 +74,9 @@ export default function VodClient({ id }: { id: string }) {
               <Link
                 key={r.id}
                 href={`/vod/${r.id}`}
-                className="group rounded-lg border border-white/10 bg-zinc-900 overflow-hidden hover:border-white/25 transition"
+                className="group rounded-lg border border-border bg-surface overflow-hidden hover:border-border transition"
               >
-                <div className="relative aspect-video bg-zinc-800">
+                <div className="relative aspect-video bg-surface-2">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={r.poster.replace("{host}", "api.ppv.st")}
@@ -102,7 +102,7 @@ export default function VodClient({ id }: { id: string }) {
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300 py-20 text-center">
+    <div className="rounded-xl border border-live/30 bg-live/10 p-4 text-live py-20 text-center">
       Failed to load: {msg}
     </div>
   );

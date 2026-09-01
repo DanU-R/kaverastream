@@ -6,34 +6,42 @@ export default function EsxCard({ event }: { event: EsxEvent }) {
   return (
     <Link
       href={`/esportex/${event.slug}`}
-      className="group glass overflow-hidden rounded-2xl transition hover:border-primary/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
+      className="card group overflow-hidden transition hover:border-accent-dim"
     >
-      <div className="relative aspect-video bg-surface-dim overflow-hidden">
+      <div className="relative aspect-video overflow-hidden bg-surface-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={event.poster}
           alt={event.tag}
-          className="h-full w-full object-cover transition group-hover:scale-105"
+          className="h-full w-full object-cover transition group-hover:scale-[1.02]"
           loading="lazy"
         />
-        <div className="absolute top-2 left-2 flex gap-2">
-          <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs">{event.category}</span>
+        <div className="absolute left-2 top-2 flex gap-1.5">
+          <span className="rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+            {event.category}
+          </span>
           {st === "live" ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-tertiary px-2 py-0.5 text-xs font-bold text-on-tertiary-container">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />LIVE
+            <span className="inline-flex items-center gap-1.5 rounded bg-live px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />live
             </span>
           ) : st === "upcoming" ? (
-            <span className="rounded-md bg-secondary/90 px-2 py-0.5 text-xs font-bold text-on-secondary">UPCOMING</span>
+            <span className="rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent">
+              upcoming
+            </span>
           ) : (
-            <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-muted-foreground">ENDED</span>
+            <span className="rounded bg-black/70 px-1.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+              ended
+            </span>
           )}
         </div>
       </div>
-      <div className="p-3 space-y-1">
-        <div className="text-sm font-semibold line-clamp-2 leading-snug">{event.tag}</div>
-        <div className="text-xs text-muted-foreground">{event.league}</div>
+      <div className="space-y-1 p-3">
+        <div className="line-clamp-2 text-sm font-medium leading-snug">{event.tag}</div>
+        <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+          {event.league}
+        </div>
         {event.kickoff ? (
-          <div className="text-xs text-muted-foreground/70">
+          <div className="border-t hairline pt-1.5 text-[11px] text-muted-foreground">
             {fmtLocal(event.kickoff)}
           </div>
         ) : null}

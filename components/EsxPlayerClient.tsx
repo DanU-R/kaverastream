@@ -94,8 +94,8 @@ export default function EsxPlayerClient({ slug }: { slug: string }) {
         <div>
           <h1 className="text-2xl font-bold">{ev.tag}</h1>
           <div className="mt-1 flex flex-wrap gap-2 text-xs text-muted-foreground">
-            <span className="rounded-md bg-white/10 px-2 py-0.5">{ev.league}</span>
-            <span className="rounded-md bg-white/10 px-2 py-0.5">{ev.category}</span>
+            <span className="rounded-md bg-surface-2 px-2 py-0.5">{ev.league}</span>
+            <span className="rounded-md bg-surface-2 px-2 py-0.5">{ev.category}</span>
           </div>
         </div>
         {showSwitcher && current && (
@@ -111,7 +111,7 @@ export default function EsxPlayerClient({ slug }: { slug: string }) {
                   setActiveIdx(idx);
                 }
               }}
-              className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5"
+              className="rounded-lg border border-border bg-surface px-3 py-1.5"
             >
               {sources.map((s) => (
                 <option key={s.key} value={s.key}>
@@ -123,7 +123,7 @@ export default function EsxPlayerClient({ slug }: { slug: string }) {
         )}
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-black aspect-video">
+      <div className="overflow-hidden rounded-2xl border border-border bg-black aspect-video">
         {current?.iframe ? (
           <iframe
             key={current.key + "-" + failCount}
@@ -143,21 +143,21 @@ export default function EsxPlayerClient({ slug }: { slug: string }) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200/80">
+        <div className="rounded-xl border border-border/20 bg-surface-2/5 p-3 text-xs text-muted-foreground/80">
           {!current
             ? "Event ini tidak memiliki source yang bisa diputar."
             : current.key.startsWith("ppv-")
               ? "Diputar via PPW network (embedindia) — browser menangani stream."
               : "Player external — resolusi stream ditangani bawaannya."}
           {showSwitcher && (
-            <span className="mt-1 block text-amber-200/60">
+            <span className="mt-1 block text-muted-foreground/60">
               {sources.length} server tersedia. Klik ganti jika stream bermasalah.
             </span>
           )}
         </div>
         <button
           onClick={handleSourceError}
-          className="rounded-lg border border-white/10 px-4 py-2 text-sm transition hover:bg-white/5"
+          className="rounded-lg border border-border px-4 py-2 text-sm transition hover:bg-surface"
         >
           {showSwitcher ? "Ganti server ⤴" : "Muat ulang ⟳"}
         </button>
@@ -168,7 +168,7 @@ export default function EsxPlayerClient({ slug }: { slug: string }) {
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300 py-20 text-center">
+    <div className="rounded-xl border border-live/30 bg-live/10 p-4 text-live py-20 text-center">
       Gagal: {msg}
     </div>
   );

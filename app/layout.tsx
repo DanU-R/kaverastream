@@ -1,41 +1,46 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const space = Space_Grotesk({
+  variable: "--font-space",
   subsets: ["latin"],
 });
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const ibm = IBM_Plex_Sans({
+  variable: "--font-ibm",
+  weight: ["400", "500", "600"],
+  subsets: ["latin"],
+});
+const ibmMono = IBM_Plex_Mono({
+  variable: "--font-ibm-mono",
+  weight: ["400"],
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "KaveraStream — Sports & IPTV",
-  description: "Live sports scheduler + IPTV channels. Obsidian Kinetic design.",
+  description: "Live sports scheduler + IPTV channels. Dark esports UI.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${space.variable} ${ibm.variable} ${ibmMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <header className="sticky top-0 z-40 border-b border-white/10 bg-[#051424]/70 backdrop-blur-xl">
+        <header className="sticky top-0 z-40 border-b hairline bg-background">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-            <Link href="/" className="flex items-center gap-2 text-xl font-extrabold tracking-tight">
-              <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary font-black glow-emerald">
+            <Link href="/" className="flex items-center gap-2.5 text-lg font-semibold tracking-tight">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-accent text-sm font-bold text-accent-ink">
                 K
               </span>
               <span>
-                Kavera<span className="text-primary">Stream</span>
+                Kavera<span className="text-accent">Stream</span>
               </span>
             </Link>
-            <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+            <nav className="flex items-center gap-0.5 text-sm text-muted-foreground">
               <NavLink href="/">Live</NavLink>
               <NavLink href="/esportex">EsportEx</NavLink>
               <NavLink href="/multiview">MultiView</NavLink>
@@ -44,8 +49,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">{children}</main>
-        <footer className="border-t border-white/10 py-4 text-center text-xs text-muted-foreground">
-          KaveraStream · Obsidian Kinetic
+        <footer className="border-t hairline py-5 text-center text-xs text-muted-foreground">
+          KaveraStream · dark esports
         </footer>
       </body>
     </html>
@@ -56,7 +61,7 @@ function NavLink({ href, children }: { href: string; children: React.ReactNode }
   return (
     <Link
       href={href}
-      className="rounded-lg px-3 py-1.5 transition hover:bg-white/5 hover:text-zinc-50"
+      className="rounded-md px-3 py-1.5 transition hover:bg-surface-2 hover:text-foreground"
     >
       {children}
     </Link>

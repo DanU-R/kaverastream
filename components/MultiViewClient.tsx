@@ -55,7 +55,7 @@ export default function MultiViewClient() {
         {items.length > 1 && (
           <button
             onClick={() => setItems([])}
-            className="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-muted-foreground hover:text-zinc-50"
+            className="rounded-lg border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-zinc-50"
           >
             Bersihkan ({items.length})
           </button>
@@ -71,7 +71,7 @@ export default function MultiViewClient() {
             <button
               key={c.key}
               onClick={() => add(c)}
-              className="rounded-lg border border-white/10 px-3 py-1.5 text-xs transition hover:border-primary/40"
+              className="rounded-lg border border-border px-3 py-1.5 text-xs transition hover:border-accent-dim/60"
             >
               + {c.title.slice(0, 32)}
             </button>
@@ -86,7 +86,7 @@ export default function MultiViewClient() {
       ) : (
         <div className={`grid gap-2 ${items.length === 1 ? "grid-cols-1" : items.length === 2 ? "grid-cols-2" : "grid-cols-2 lg:grid-cols-3"}`}>
           {items.map((it) => (
-            <div key={it.key} className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
+            <div key={it.key} className="relative overflow-hidden rounded-xl border border-border bg-black">
               <iframe
                 src={it.iframe}
                 className="aspect-video w-full"
@@ -98,7 +98,7 @@ export default function MultiViewClient() {
                 <span className="truncate">{it.title}</span>
                 <button
                   onClick={() => setItems((p) => p.filter((x) => x.key !== it.key))}
-                  className="ml-2 text-red-400 hover:text-red-300"
+                  className="ml-2 text-live hover:text-live"
                 >
                   ✕
                 </button>
