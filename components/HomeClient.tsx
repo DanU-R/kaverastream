@@ -103,20 +103,22 @@ export default function HomeClient() {
 
 function Hero({ liveCount, total }: { liveCount: number; total: number }) {
   return (
-    <div className="rounded-2xl bg-gradient-to-r from-zinc-900 to-zinc-800 border border-white/10 p-8">
-      <h1 className="text-3xl font-bold">
-        Kavera<span className="text-emerald-400">Stream</span>
-      </h1>
-      <p className="text-muted-foreground mt-2">
-        Live sports dashboard — {liveCount} live now · {total} events listed.
-      </p>
-      <div className="flex gap-6 mt-4 text-sm text-muted-foreground">
-        <span className="inline-flex items-center gap-2">
-          <Dot className="bg-emerald-500" /> Live
-        </span>
-        <span className="inline-flex items-center gap-2">
-          <Dot className="bg-amber-500" /> Upcoming
-        </span>
+    <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-surface-container-low p-8 glow-emerald">
+      <div className="relative z-10">
+        <h1 className="text-4xl font-extrabold">
+          Kavera<span className="text-primary">Stream</span>
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Live sports dashboard — {liveCount} live now · {total} events listed.
+        </p>
+        <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
+          <span className="inline-flex items-center gap-2">
+            <Dot className="bg-primary" /> Live
+          </span>
+          <span className="inline-flex items-center gap-2">
+            <Dot className="bg-secondary" /> Upcoming
+          </span>
+        </div>
       </div>
     </div>
   );

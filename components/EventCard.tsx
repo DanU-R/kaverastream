@@ -6,9 +6,9 @@ export default function EventCard({ stream }: { stream: Stream }) {
   return (
     <Link
       href={`/event/${stream.id}`}
-      className="group relative overflow-hidden rounded-xl border border-white/10 bg-zinc-900 transition hover:border-white/25"
+      className="group glass overflow-hidden rounded-2xl transition hover:border-primary/40 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
     >
-      <div className="relative aspect-video bg-zinc-800 overflow-hidden">
+      <div className="relative aspect-video bg-surface-dim overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={stream.poster}
@@ -18,19 +18,17 @@ export default function EventCard({ stream }: { stream: Stream }) {
         />
         <div className="absolute top-2 left-2 flex gap-2">
           {live ? (
-            <span className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-0.5 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-tertiary px-2 py-0.5 text-xs font-bold text-on-tertiary-container">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
               LIVE
             </span>
           ) : (
-            <span className="rounded-md bg-amber-600/90 px-2 py-0.5 text-xs font-semibold">
+            <span className="rounded-md bg-secondary/90 px-2 py-0.5 text-xs font-bold text-on-secondary">
               UPCOMING
             </span>
           )}
           {stream.always_live ? (
-            <span className="rounded-md bg-zinc-900/80 px-2 py-0.5 text-xs">
-              24/7
-            </span>
+            <span className="rounded-md bg-surface-bright/80 px-2 py-0.5 text-xs">24/7</span>
           ) : null}
         </div>
         {live ? (
@@ -40,21 +38,13 @@ export default function EventCard({ stream }: { stream: Stream }) {
         ) : null}
       </div>
       <div className="p-3 space-y-1">
-        <div className="text-sm font-semibold line-clamp-2 leading-snug">
-          {stream.name}
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {stream.category_name}
-        </div>
+        <div className="text-sm font-semibold line-clamp-2 leading-snug">{stream.name}</div>
+        <div className="text-xs text-muted-foreground">{stream.category_name}</div>
         {stream.source_tag ? (
-          <div className="text-xs text-muted-foreground/70">
-            {stream.source_tag}
-          </div>
+          <div className="text-xs text-muted-foreground/70">{stream.source_tag}</div>
         ) : null}
         {!stream.always_live && (
-          <div className="text-xs text-muted-foreground/70">
-            {fmtTime(stream.starts_at)}
-          </div>
+          <div className="text-xs text-muted-foreground/70">{fmtTime(stream.starts_at)}</div>
         )}
       </div>
     </Link>

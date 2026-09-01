@@ -1,23 +1,94 @@
 @import "tailwindcss";
 
+/* KAverASTREAM — "Obsidian Kinetic" design system (generated via Google Stitch)
+   Material Design 3 dark tokens, emerald-primary, glassmorphism surfaces. */
+
 :root {
-  --background: #09090b; /* zinc-950 */
-  --foreground: #fafafa; /* zinc-50 */
-  --muted-foreground: #a1a1aa; /* zinc-400 */
-  --border: rgba(255, 255, 255, 0.1);
+  /* surfaces (dark cinematic) */
+  --surface: #051424;           /* base background */
+  --surface-dim: #051424;
+  --surface-bright: #2c3a4c;
+  --surface-variant: #273647;
+  --surface-container-low: #0d1c2d;
+  --on-background: #d4e4fa;     /* text */
+
+  /* primary emerald */
+  --primary: #4edea3;
+  --primary-container: #10b981;
+  --on-primary-fixed: #002113;
+  --on-primary-fixed-variant: #005236;
+  --inverse-primary: #006c49;
+
+  /* secondary */
+  --secondary: #45dfa4;
+  --on-secondary: #003825;
+
+  /* tertiary (accent red for LIVE) */
+  --tertiary-container: #fc7c78;
+  --on-tertiary-container: #711419;
+  --error: #ffb4ab;
+
+  /* misc */
+  --outline: #86948a;
+  --border-subtle: rgba(212, 228, 250, 0.10);
+  --card-bg: rgba(19, 19, 19, 0.7);
+  --card-blur: 20px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-variant: var(--surface-variant);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-foreground: var(--on-background);
+  --color-muted-foreground: #9fb4cd;
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-secondary: var(--secondary);
+  --color-error: var(--error);
+  --color-tertiary: var(--tertiary-container);
+  --font-sans: var(--font-geist-sans), "Inter", system-ui, sans-serif;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  background:
+    radial-gradient(1200px 600px at 80% -10%, rgba(16, 185, 129, 0.08), transparent),
+    radial-gradient(900px 500px at 0% 0%, rgba(13, 28, 45, 0.6), transparent),
+    var(--surface);
+  color: var(--on-background);
+  font-family: var(--font-sans), Inter, system-ui, sans-serif;
+}
+
+/* glassmorphism surface tier 1 (cards) */
+.glass {
+  background: rgba(19, 19, 19, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(212, 228, 250, 0.08);
+}
+
+/* surface tier 2 (modals/overlays) */
+.glass-2 {
+  background: rgba(30, 30, 30, 0.8);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+/* active "lit" emerald edge */
+.lit {
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  box-shadow: inset 0 0 0 1px rgba(78, 222, 163, 0.6);
+}
+
+/* primary glow */
+.glow-emerald {
+  box-shadow: 0 0 22px rgba(16, 185, 129, 0.35);
+}
+
+/* thin precision borders */
+.thin-border {
+  border: 1px solid rgba(212, 228, 250, 0.10);
 }

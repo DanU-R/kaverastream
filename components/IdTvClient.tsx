@@ -85,7 +85,7 @@ export default function IdTvClient() {
             <Link
               key={c.id}
               href={`/idtv/${c.id}`}
-              className="group rounded-xl border border-white/10 bg-zinc-900 p-3 transition hover:border-emerald-400/40 hover:bg-zinc-800"
+              className="group glass rounded-xl p-3 transition hover:border-primary/40 hover:shadow-[0_0_18px_rgba(16,185,129,0.12)]"
             >
               <div className="flex items-center gap-3">
                 <ChannelLogo c={c} />
