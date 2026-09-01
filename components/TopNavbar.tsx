@@ -40,10 +40,21 @@ export default function TopNavbar({ mobile = false }: { mobile?: boolean }) {
         })}
       </nav>
       <div className="ml-auto flex items-center gap-3">
-        <input
-          placeholder="Cari pertandingan, tim, liga..."
-          className="hidden w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-soft focus:border-accent/40 focus:outline-none sm:block"
-        />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const v = (e.currentTarget.elements.namedItem("q") as HTMLInputElement)?.value.trim();
+            window.location.href = v ? `/?q=${encodeURIComponent(v)}` : "/";
+          }}
+          role="search"
+        >
+          <input
+            name="q"
+            defaultValue={new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("q") ?? ""}
+            placeholder="Cari pertandingan, tim, liga..."
+            className="hidden w-64 rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-soft focus:border-accent/40 focus:outline-none sm:block"
+          />
+        </form>
         <button aria-label="Notifikasi" className="text-muted-foreground hover:text-accent">🔔</button>
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-surface-hover text-xs font-semibold">K</div>
       </div>

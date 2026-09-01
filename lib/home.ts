@@ -1,21 +1,21 @@
-// Data layer for the BALLSTREAM-style home: maps ppv streams + esportex into a
-// unified "match" feed, selects a featured live match, live carousel, and
-// live-scores rows.
+// Data layer for the KaveraStream home: maps ppv streams + esportex into a
+// unified "match" feed and derives live/schedule. All fields come from the
+// real API (viewers, poster, channel/source_tag, category, kickoff). Scores
+// are NOT fabricated — the upstream API exposes none and external score DBs
+// don't overlap this event universe.
 import { Stream, fetchStreams, isLive } from "@/lib/api";
 import { EsxEvent, esxStatus, fetchEsxCatalog } from "@/lib/esportex";
 
 export interface MatchRow {
   id: string;
   title: string;
-  league: string;
+  league: string;       // real category
+  channel?: string;     // source_tag (broadcast provider)
   venue?: string;
   status: "live" | "scheduled" | "finished";
   minute?: string;
   viewers?: number;
-  home: string;
-  away: string;
-  homeScore?: number;
-  awayScore?: number;
+  accent?: [string, string]; // stream colors -> card accent
   poster?: string;
   href: string;
   source: "ppv" | "esx";
@@ -30,15 +30,18 @@ export async function loadFeed(): Promise<MatchRow[]> {
     for (const g of ppvRes.value) {
       for (const s of g.streams ?? []) {
         const live = isLive(s, now);
+        const accent: [string, string] = (s as any).colors?.length
+          ? (s as any).colors
+          : ["#39e75f", "#1f7a3a"];
         rows.push({
           id: "ppv-" + s.id,
           title: s.name,
-          league: g.category || s.category_name,
+          league: s.category_name || g.category,
+          channel: s.source_tag || undefined,
           status: live ? "live" : "scheduled",
           minute: live ? "LIVE" : undefined,
           viewers: s.viewers ?? 0,
-          home: s.name.split(" vs ")[0] || s.name,
-          away: s.name.split(" vs ")[1] || "",
+          accent,
           poster: s.poster,
           href: `/event/${s.id}`,
           source: "ppv",
@@ -56,8 +59,6 @@ export async function loadFeed(): Promise<MatchRow[]> {
         title: e.tag,
         league: e.league,
         venue: e.category,
-        home: e.tag.split(" vs ")[0] || e.tag,
-        away: e.tag.split(" vs ")[1] || "",
         status: st === "live" ? "live" : st === "upcoming" ? "scheduled" : "finished",
         minute: st === "live" ? "LIVE" : undefined,
         poster: e.poster,
@@ -70,17 +71,35 @@ export async function loadFeed(): Promise<MatchRow[]> {
   return rows;
 }
 
-export function pickFeatured(rows: MatchRow[]): MatchRow | null {
-  // live football first, else first live, else null
-  const live = rows.filter((r) => r.status === "live");
-  const football = live.find((r) => r.league.toLowerCase().includes("league") || r.league.toLowerCase().includes("football"));
-  return football ?? live[0] ?? null;
-}
-
 export function liveMatches(rows: MatchRow[]): MatchRow[] {
   return rows.filter((r) => r.status === "live");
 }
-
-export function schedules(rows: MatchRow[]): MatchRow[] {
+export function scheduledMatches(rows: MatchRow[]): MatchRow[] {
   return rows.filter((r) => r.status === "scheduled");
+}
+
+// Real league list derived from the live feed (category + live count).
+export function realLeagues(rows: MatchRow[]): { name: string; live: number }[] {
+  const map = new Map<string, number>();
+  for (const r of rows) {
+    if (!r.league) continue;
+    map.set(r.league, (map.get(r.league) ?? 0) + (r.status === "live" ? 1 : 0));
+  }
+  return [...map.entries()]
+    .map(([name, live]) => ({ name, live }))
+    .sort((a, b) => b.live - a.live)
+    .slice(0, 8);
+}
+
+// Favorite-team seed: teams currently live (from title), for local favorite list.
+export function liveTeams(rows: MatchRow[]): string[] {
+  const out = new Set<string>();
+  for (const r of rows) {
+    if (r.status !== "live") continue;
+    for (const part of r.title.split(/\s+(?:vs\.?|at|v)\s+/i)) {
+      const t = part.trim();
+      if (t && t.length > 2 && t.length < 40) out.add(t);
+    }
+  }
+  return [...out];
 }
