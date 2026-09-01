@@ -104,7 +104,9 @@ export default function HomeClient() {
 function Hero({ liveCount, total }: { liveCount: number; total: number }) {
   return (
     <div className="rounded-2xl bg-gradient-to-r from-zinc-900 to-zinc-800 border border-white/10 p-8">
-      <h1 className="text-3xl font-bold">RushBoard</h1>
+      <h1 className="text-3xl font-bold">
+        Kavera<span className="text-emerald-400">Stream</span>
+      </h1>
       <p className="text-muted-foreground mt-2">
         Live sports dashboard — {liveCount} live now · {total} events listed.
       </p>
