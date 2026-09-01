@@ -71,7 +71,18 @@ export async function fetchEsxEvent(slug: string): Promise<EsxEvent | null> {
   return all.find((e) => e.slug === slug) ?? null;
 }
 
-// ---- resolve playable source ----
+// EsportEx live status helper (kickoff/endTime)
+export function esxStatus(ev: EsxEvent): "live" | "upcoming" | "ended" {
+  const now = Date.now();
+  const start = ev.kickoff ? new Date(ev.kickoff.replace(" ", "T")).getTime() : NaN;
+  const end = ev.endTime ? new Date(ev.endTime.replace(" ", "T")).getTime() : NaN;
+  if (isNaN(start)) return "upcoming";
+  if (now < start) return "upcoming";
+  if (!isNaN(end) && now > end) return "ended";
+  return "live";
+}
+
+// decode base64 player hash token (e.g. "cHB2LzI3ODg0" -> "ppv/27884")
 export function decodeToken(hash: string): string {
   try {
     const padded = hash + "=".repeat((-hash.length) % 4);
@@ -80,7 +91,6 @@ export function decodeToken(hash: string): string {
     return hash;
   }
 }
-
 export interface ResolvedSource {
   type: "ppv-index" | "esx-iframe";
   ppvId?: string;

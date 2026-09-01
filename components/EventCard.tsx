@@ -44,9 +44,24 @@ export default function EventCard({ stream }: { stream: Stream }) {
           <div className="text-xs text-muted-foreground/70">{stream.source_tag}</div>
         ) : null}
         {!stream.always_live && (
-          <div className="text-xs text-muted-foreground/70">{fmtTime(stream.starts_at)}</div>
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-muted-foreground/70">{fmtTime(stream.starts_at)}</span>
+            {!live && <Countdown ts={stream.starts_at} now={Date.now() / 1000} />}
+          </div>
         )}
       </div>
     </Link>
   );
+}
+
+function Countdown({ ts, now }: { ts: number; now: number }) {
+  const sec = Math.max(0, Math.floor(ts - now));
+  if (sec <= 60) return <span className="font-semibold text-secondary">~{sec}s</span>;
+  const m = Math.floor(sec / 60);
+  const h = Math.floor(m / 60);
+  if (h > 0) {
+    const mm = m % 60;
+    return <span className="text-muted-foreground">{h}h{mm.toString().padStart(2, "0")}m</span>;
+  }
+  return <span className="text-muted-foreground">{m}m</span>;
 }

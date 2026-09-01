@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import {
   CategoryGroup,
   Stream,
@@ -8,31 +9,44 @@ import {
   fmtTime,
   isLive,
 } from "@/lib/api";
+import { EsxEvent, esxStatus, fetchEsxCatalog } from "@/lib/esportex";
 import EventCard from "@/components/EventCard";
+import EsxCard from "@/components/EsxCard";
+
+type SortMode = "live" | "viewers" | "kickoff" | "az";
 
 export default function HomeClient() {
   const [data, setData] = useState<CategoryGroup[]>([]);
+  const [esx, setEsx] = useState<EsxEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now() / 1000);
 
+  const [q, setQ] = useState("");
+  const [selectedCats, setSelectedCats] = useState<Set<string>>(new Set());
+  const [showEsx, setShowEsx] = useState(true);
+  const [sort, setSort] = useState<SortMode>("live");
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // load both sources
   useEffect(() => {
     let live = true;
-    const load = async () => {
-      try {
-        const d = await fetchStreams();
-        if (live) {
-          setData(d);
-          setError(null);
+    let t: ReturnType<typeof setInterval>;
+    (async () => {
+      const loadAll = async () => {
+        try {
+          const results = await Promise.allSettled([fetchStreams(), fetchEsxCatalog()]);
+          if (results[0].status === "fulfilled") setData(results[0].value);
+          if (results[1].status === "fulfilled") setEsx(results[1].value as EsxEvent[]);
+        } catch (e: any) {
+          if (live) setError(String(e?.message ?? e));
+        } finally {
+          if (live) setLoading(false);
         }
-      } catch (e: any) {
-        if (live) setError(String(e?.message ?? e));
-      } finally {
-        if (live) setLoading(false);
-      }
-    };
-    load();
-    const t = setInterval(load, 60_000); // refresh catalog
+      };
+      await loadAll();
+      if (live) t = setInterval(loadAll, 30_000); // auto-refresh 30s
+    })();
     const clock = setInterval(() => setNow(Date.now() / 1000), 10_000);
     return () => {
       live = false;
@@ -41,101 +55,199 @@ export default function HomeClient() {
     };
   }, []);
 
-  const all = useMemo(() => data.flatMap((g) => g.streams ?? []), [data]);
-  const liveNow = useMemo(
-    () => all.filter((s) => isLive(s, now)).sort((a, b) => b.viewers - a.viewers),
-    [all, now]
+  const all: Stream[] = useMemo(() => data.flatMap((g) => g.streams ?? []), [data]);
+  const catNames = useMemo(
+    () => [...new Set([...data.map((g) => g.category), ...esx.map((e) => e.category)])].sort(),
+    [data, esx]
   );
-  const cats = useMemo(() => data.filter((g) => g.streams?.length), [data]);
+  const liveAll = useMemo(
+    () => {
+      const ppv = all.filter((s) => isLive(s, now));
+      const esxLive = esx.filter((e) => e.playable && esxStatus(e) === "live");
+      return (
+        [...ppv.map((s) => ({ key: "ppv-" + s.id, name: s.name, viewers: s.viewers ?? 0, live: true })),
+         ...esxLive.map((e) => ({ key: "esx-" + e.id, name: e.tag, viewers: 0, live: true }))]
+      );
+    },
+    [all, esx, now]
+  );
+
+  // unified filtered/sorted list (ppv + esx)
+  const feed = useMemo(() => {
+    const ppvItems = all
+      .filter((s) => (selectedCats.size ? selectedCats.has(s.category_name) : true))
+      .filter((s) => (q.trim() ? (s.name + " " + (s.tag || "") + " " + s.category_name).toLowerCase().includes(q.toLowerCase()) : true))
+      .map((s) => ({ kind: "ppv" as const, key: "ppv-" + s.id, stream: s }));
+
+    const esxItems = showEsx
+      ? esx
+          .filter((e) => (selectedCats.size ? selectedCats.has(e.category) : true))
+          .filter((e) => (q.trim() ? (e.tag + " " + (e.league || "")).toLowerCase().includes(q.toLowerCase()) : true))
+          .filter((e) => e.playable)
+          .map((e) => ({ kind: "esx" as const, key: "esx-" + e.id, ev: e }))
+      : [];
+
+    const combined = [...ppvItems, ...esxItems];
+
+    switch (sort) {
+      case "viewers":
+        return combined.sort((a, b) => (b.kind === "ppv" ? (b.stream?.viewers ?? 0) : 0) - (a.kind === "ppv" ? (a.stream?.viewers ?? 0) : 0));
+      case "kickoff":
+        return combined.sort((a, b) =>
+          (a.kind === "ppv" ? a.stream?.starts_at ?? 0 : Date.now() / 1000) -
+          (b.kind === "ppv" ? b.stream?.starts_at ?? 0 : Date.now() / 1000)
+        );
+      case "az":
+        return combined.sort((a, b) =>
+          (a.kind === "ppv" ? a.stream.name : a.ev?.tag || "").localeCompare(
+            b.kind === "ppv" ? b.stream.name : b.ev?.tag || ""
+          )
+        );
+      case "live":
+      default:
+        return combined.sort((a, b) => {
+          const al = a.kind === "ppv" ? isLive(a.stream, now) : a.ev?.playable && esxStatus(a.ev as EsxEvent) === "live";
+          const bl = b.kind === "ppv" ? isLive(b.stream, now) : b.ev?.playable && esxStatus(b.ev as EsxEvent) === "live";
+          if (al !== bl) return al ? -1 : 1;
+          const av = a.kind === "ppv" ? (a.stream.viewers ?? 0) : 0;
+          const bv = b.kind === "ppv" ? (b.stream.viewers ?? 0) : 0;
+          return bv - av;
+        });
+    }
+  }, [all, esx, q, selectedCats, showEsx, sort, now]);
+
+  const liveNowFeed = useMemo(
+    () => feed.filter((i) => (i.kind === "ppv" ? isLive(i.stream as Stream, now) : (i.ev?.playable && esxStatus(i.ev as EsxEvent) === "live"))),
+    [feed, now]
+  );
+  const upcomingFeed = useMemo(
+    () => feed.filter((i) => !(i.kind === "ppv" ? isLive(i.stream as Stream, now) : esxStatus(i.ev as EsxEvent) === "live")),
+    [feed, now]
+  );
+
+  const toggleCat = (c: string) => {
+    setSelectedCats((prev) => {
+      const n = new Set(prev);
+      if (n.has(c)) n.delete(c);
+      else n.add(c);
+      return n;
+    });
+  };
 
   return (
-    <div className="space-y-10">
-      <Hero liveCount={liveNow.length} total={all.length} />
-      <section>
-        <div className="mb-4 flex items-center gap-3">
-          <span className="relative flex h-3 w-3">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
-          </span>
-          <h2 className="text-2xl font-bold">
-            Live Now{" "}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({liveNow.length})
-            </span>
-          </h2>
+    <div className="space-y-8">
+      {/* Controls */}
+      <div className="sticky top-16 z-30 space-y-3 rounded-2xl border border-white/10 bg-[#051424]/85 p-4 backdrop-blur-xl">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="🔍 Cari tim / liga / event…"
+            className="min-w-[220px] flex-1 rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm focus:outline-none focus:border-primary/40"
+          />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortMode)}
+            className="rounded-lg border border-white/10 bg-zinc-900 px-3 py-2 text-sm"
+          >
+            <option value="live">Live dulu</option>
+            <option value="viewers">Terpopuler (viewers)</option>
+            <option value="kickoff">Jadwal</option>
+            <option value="az">A–Z</option>
+          </select>
+          <button
+            onClick={() => setShowEsx((v) => !v)}
+            className={`rounded-lg px-3 py-2 text-sm transition ${showEsx ? "bg-primary/20 text-primary" : "bg-white/5 text-muted-foreground"}`}
+          >
+            EsportEx {showEsx ? "✓" : "✗"}
+          </button>
+          <Link
+            href="/multiview"
+            className="rounded-lg bg-white/5 px-3 py-2 text-sm text-muted-foreground transition hover:bg-white/10 hover:text-zinc-50"
+          >
+            🖥 MultiView
+          </Link>
+          {selectedCats.size > 0 && (
+            <button onClick={() => setSelectedCats(new Set())} className="rounded-lg bg-white/5 px-3 py-2 text-sm text-muted-foreground hover:text-zinc-50">
+              Reset kategori
+            </button>
+          )}
         </div>
-        {loading ? (
-          <GridSkeleton />
-        ) : error ? (
-          <ErrorBox msg={error} />
-        ) : liveNow.length ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {liveNow.map((s) => (
-              <EventCard key={s.id} stream={s} />
-            ))}
-          </div>
-        ) : (
-          <Empty msg="No live events right now. Check upcoming below." />
-        )}
-      </section>
-
-      {cats.map((g) => (
-        <section key={g.id}>
-          <h2 className="mb-4 text-2xl font-bold">
-            {g.category}{" "}
-            <span className="text-sm font-normal text-muted-foreground">
-              ({g.streams.length})
-            </span>
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {g.streams
-              .slice()
-              .sort((a, b) => a.starts_at - b.starts_at)
-              .map((s) => (
-                <EventCard key={s.id} stream={s} />
-              ))}
-          </div>
-        </section>
-      ))}
-    </div>
-  );
-}
-
-function Hero({ liveCount, total }: { liveCount: number; total: number }) {
-  return (
-    <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-surface-container-low p-8 glow-emerald">
-      <div className="relative z-10">
-        <h1 className="text-4xl font-extrabold">
-          Kavera<span className="text-primary">Stream</span>
-        </h1>
-        <p className="mt-2 text-muted-foreground">
-          Live sports dashboard — {liveCount} live now · {total} events listed.
-        </p>
-        <div className="mt-4 flex gap-6 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-2">
-            <Dot className="bg-primary" /> Live
-          </span>
-          <span className="inline-flex items-center gap-2">
-            <Dot className="bg-secondary" /> Upcoming
-          </span>
+        {/* category chips */}
+        <div className="flex flex-wrap gap-1.5">
+          {catNames.map((c) => (
+            <button
+              key={c}
+              onClick={() => toggleCat(c)}
+              className={`rounded-full px-2.5 py-1 text-xs transition ${selectedCats.has(c) ? "bg-primary/25 text-primary" : "bg-white/5 text-muted-foreground hover:bg-white/10"}`}
+            >
+              {c}
+            </button>
+          ))}
         </div>
       </div>
+
+      {loading ? (
+        <GridSkeleton />
+      ) : error ? (
+        <ErrorBox msg={error} />
+      ) : (
+        <>
+          {/* Live Now section */}
+          <section>
+            <div className="mb-4 flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+              </span>
+              <h2 className="text-2xl font-bold">
+                Live Now{" "}
+                <span className="text-sm font-normal text-muted-foreground">({liveNowFeed.length})</span>
+              </h2>
+            </div>
+            {liveNowFeed.length ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {liveNowFeed.map((i) =>
+                  i.kind === "ppv" ? (
+                    <EventCard key={i.key} stream={i.stream as Stream} />
+                  ) : (
+                    <EsxCard key={i.key} event={i.ev as EsxEvent} />
+                  )
+                )}
+              </div>
+            ) : (
+              <Empty msg="Tidak ada yang live sekarang. Lihat upcoming di bawah." />
+            )}
+          </section>
+
+          {/* Upcoming / rest */}
+          <section>
+            <h2 className="mb-4 text-2xl font-bold">Upcoming & Lainnya</h2>
+            {upcomingFeed.length ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {upcomingFeed.map((i) =>
+                  i.kind === "ppv" ? (
+                    <EventCard key={i.key} stream={i.stream as Stream} />
+                  ) : (
+                    <EsxCard key={i.key} event={i.ev as EsxEvent} />
+                  )
+                )}
+              </div>
+            ) : (
+              <Empty msg="Tidak ada event cocok dengan filter." />
+            )}
+          </section>
+        </>
+      )}
     </div>
   );
-}
-
-function Dot({ className }: { className: string }) {
-  return <span className={`inline-block h-2.5 w-2.5 rounded-full ${className}`} />;
 }
 
 function GridSkeleton() {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {Array.from({ length: 8 }).map((_, i) => (
-        <div
-          key={i}
-          className="h-56 animate-pulse rounded-xl bg-white/5 border border-white/5"
-        />
+        <div key={i} className="h-56 animate-pulse rounded-xl bg-white/5" />
       ))}
     </div>
   );
@@ -143,16 +255,12 @@ function GridSkeleton() {
 
 function ErrorBox({ msg }: { msg: string }) {
   return (
-    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">
-      Failed to load: {msg}
-    </div>
+    <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-300">Failed: {msg}</div>
   );
 }
 
 function Empty({ msg }: { msg: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-white/15 p-6 text-muted-foreground">
-      {msg}
-    </div>
+    <div className="rounded-xl border border-dashed border-white/15 p-6 text-muted-foreground">{msg}</div>
   );
 }

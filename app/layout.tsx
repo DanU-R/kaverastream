@@ -38,6 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="flex items-center gap-1 text-sm text-muted-foreground">
               <NavLink href="/">Live</NavLink>
               <NavLink href="/esportex">EsportEx</NavLink>
+              <NavLink href="/multiview">MultiView</NavLink>
               <NavLink href="/vods">On-Demand</NavLink>
             </nav>
           </div>
