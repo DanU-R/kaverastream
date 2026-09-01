@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { displayUrl, fetchChannel, IdChannel } from "@/lib/idtv";
+import { fetchChannel, IdChannel } from "@/lib/idtv";
 
 declare global {
   interface Window {
@@ -38,9 +38,10 @@ export default function IdPlayerClient({ id }: { id: string }) {
         if (!found) return setState("err"), setErr("Channel tidak ditemukan");
         setCh(found);
 
-        const src = displayUrl(found.url);
+        // found.url is already final: direct for native, /api/p/stream?... for proxy
+        const src = found.url;
         if (!src) {
-          return setState("err"), setErr("Sumber tidak CORS-open — tidak bisa diputar di browser.");
+          return setState("err"), setErr("Sumber tidak tersedia untuk browser.");
         }
 
         const video = videoRef.current;
@@ -84,8 +85,13 @@ export default function IdPlayerClient({ id }: { id: string }) {
       </Link>
       <div>
         <h1 className="text-2xl font-bold">{ch?.name ?? id}</h1>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          Native HLS · {ch?.group || "Indonesia"}
+        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{ch?.group || "Indonesia"}</span>
+          {ch?.native ? (
+            <span className="rounded-md bg-emerald-500/15 px-2 py-0.5 text-emerald-300">Native</span>
+          ) : (
+            <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-amber-300">via proxy</span>
+          )}
         </div>
       </div>
 

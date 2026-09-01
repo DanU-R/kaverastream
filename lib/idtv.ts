@@ -1,23 +1,48 @@
-// Indonesian IPTV channels — from iptv-org (large, maintained playlist).
-// Strategy (option A): play natively via <video>+hls.js for CORS-open hosts ONLY.
-// No proxy — hosts flagged non-CORS (token-rotating / geo / raw-IP) are dropped
-// so everything listed actually plays. Filtered against a live-tested host
-// allowlist below.
+// Indonesian TV channels.
+//
+// TWO tiers:
+//  * NATIVE  — hosts verified CORS-open (play straight in <video>+hls.js).
+//  * PROXY   — national big channels whose CDNs aren't browser-CORS (token-rotating /
+//              geo / raw-IP). These go through the serverless full-rewrite proxy
+//              `/api/p/stream`. Reliability varies by Vercel region & upstream.
 
 export const ID_PLAYLIST_URL =
   process.env.NEXT_PUBLIC_ID_PLAYLIST_URL ??
   "https://iptv-org.github.io/iptv/countries/id.m3u";
 
+const PROXY_PREFIX = "/api/p/stream?url=";
+
 export interface IdChannel {
   name: string;
   logo?: string;
-  url: string;
+  url: string;      // final playable (native url OR /api/p/stream?...)
   id: string;
   group: string;
+  native: boolean;  // true = plays directly, false = via proxy
+  rawUrl: string;   // upstream URL (when proxied)
 }
 
-// Hosts verified CORS-open (HTTP 200 + Access-Control-Allow-Origin: *) from live
-// browser probe. Anything not here is dropped (can't play natively in browser).
+// ---- National big channels that need the proxy ----
+// (upstream CDNs: medcom token-rotating, dens geo/DNS, malingtv rate-limits,
+//  transmedia / detik socket-restrictive — none browser-CORS-reliable)
+const NATIONAL: { name: string; url: string; logo?: string }[] = [
+  { name: "Metro TV", url: "https://edge.medcom.id/live-edge/smil:metro.smil/playlist.m3u8", logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/a/a6/Metro_TV_2023.svg/512px-Metro_TV_2023.svg.png" },
+  { name: "CNN Indonesia", url: "https://live.cnnindonesia.com/livecnn/smil:cnntv.smil/playlist.m3u8" },
+  { name: "CNBC Indonesia", url: "https://live.cnbcindonesia.com/livecnbc/smil:cnbctv.smil/playlist.m3u8" },
+  { name: "Trans7", url: "https://video.detik.com/trans7/smil:trans7.smil/playlist.m3u8" },
+  { name: "Trans TV", url: "https://video.detik.com/transtv/smil:transtv.smil/playlist.m3u8" },
+  { name: "RCTI", url: "https://mncmedia.malingtv.workers.dev/rcti.m3u8" },
+  { name: "GTV", url: "https://mncmedia.malingtv.workers.dev/gtv.m3u8" },
+  { name: "MNCTV", url: "https://mncmedia.malingtv.workers.dev/mnctv.m3u8" },
+  { name: "iNews", url: "https://mncmedia.malingtv.workers.dev/inews.m3u8" },
+  { name: "Kompas TV", url: "https://op-group1-swiftservehd-1.dens.tv/h/h234/index.m3u8" },
+  { name: "SCTV", url: "https://op-group1-swiftservehd-1.dens.tv/h/h217/index.m3u8" },
+  { name: "Indosiar", url: "https://203.77.246.2/udp/239.1.1.110:5000" },
+  { name: "ANTV", url: "http://103.58.160.157:8278/720-ANTV/playlist.m3u8" },
+  { name: "tvOne", url: "https://op-group1-swiftservehd-1.dens.tv/h/h224/index.m3u8" },
+];
+
+// ---- Native CORS-open hosts (verified live) ----
 const CORS_HOSTS: Record<string, true> = {
   "5bf7b725107e5.streamlock.net": true,
   "akativi.siar.us": true,
@@ -43,7 +68,6 @@ const CORS_HOSTS: Record<string, true> = {
   "lingkartv.my.id": true,
   "stream.asianastream.com": true,
   "re1.siar.us": true,
-  "edge.medcom.id": true,
   "stream.matrixtv.id": true,
   "stream.convergen.co": true,
   "mgstv.siar.us": true,
@@ -71,25 +95,59 @@ const CORS_HOSTS: Record<string, true> = {
   "srs.u-channel.tv": true,
   "cdn.gunadarma.ac.id": true,
   "ikitv.sqn.at:8000": true,
+  "nusantaratv.siar.us": true,
 };
-
-export function isCorsOpen(url: string): boolean {
-  try {
-    return !!CORS_HOSTS[new URL(url).host];
-  } catch {
-    return false;
-  }
-}
-
-export function displayUrl(url: string): string {
-  // native-only: must be https and CORS-open, else not playable
-  if (!/^https?:\/\//.test(url)) return "";
-  if (!isCorsOpen(url)) return "";
-  return url;
-}
 
 function slug(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+function isCorsOpen(url: string): boolean {
+  try { return !!CORS_HOSTS[new URL(url).host]; } catch { return false; }
+}
+
+// Build the merged channel list: national (proxy) + local (native CORS)
+export async function fetchIdChannels(): Promise<IdChannel[]> {
+  const out: IdChannel[] = [];
+
+  // 1. national via proxy (udp/rtmp excluded — not browser-playable)
+  for (const n of NATIONAL) {
+    if (/^(udp|rtmp|rtsp):/.test(n.url)) continue;
+    out.push({
+      name: n.name,
+      logo: n.logo,
+      url: PROXY_PREFIX + encodeURIComponent(n.url),
+      rawUrl: n.url,
+      id: slug(n.name),
+      group: "Nasional",
+      native: false,
+    });
+  }
+
+  // 2. native CORS-open from iptv-org (countries/id.m3u)
+  try {
+    const res = await fetch(ID_PLAYLIST_URL, { cache: "no-store" });
+    if (res.ok) {
+      const text = await res.text();
+      const seen = new Set<string>();
+      for (const c of parsePlaylist(text)) {
+        if (!isCorsOpen(c.url)) continue;
+        const k = c.name.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({ ...c, url: c.url, native: true, group: c.group || "Lokal" });
+      }
+    }
+  } catch {
+    // playlist fetch failed — national still available
+  }
+
+  return out;
+}
+
+export async function fetchChannel(id: string): Promise<IdChannel | null> {
+  const all = await fetchIdChannels();
+  return all.find((c) => c.id === id) ?? null;
 }
 
 export function parsePlaylist(text: string): IdChannel[] {
@@ -100,51 +158,13 @@ export function parsePlaylist(text: string): IdChannel[] {
     if (l.startsWith("#EXTINF")) {
       const name = l.includes(",") ? l.slice(l.lastIndexOf(",") + 1).trim() : "";
       const logo = l.match(/tvg-logo="([^"]*)"/)?.[1] ?? "";
-      // group-title present on some
       const grp = l.match(/group-title="([^"]*)"/)?.[1] ?? "";
       cur = { name, logo, group: grp };
     } else if (cur && l && !l.startsWith("#")) {
       cur.url = l;
-      out.push({
-        name: cur.name ?? "",
-        logo: cur.logo,
-        group: cur.group ?? "",
-        url: l,
-        id: slug(cur.name ?? `ch-${out.length}`),
-      });
+      out.push({ name: cur.name ?? "", logo: cur.logo, group: cur.group ?? "", url: l, id: slug(cur.name ?? `ch-${out.length}`) } as IdChannel);
       cur = null;
     }
   }
   return out;
-}
-
-// Decide a CORS-open sample channel for a name/url
-export function eligibleChannel(c: IdChannel): boolean {
-  const disp = displayUrl(c.url);
-  if (disp) return true;
-  // keep major national channels even if sample host not CORS (they may have
-  // alternate streams); but those won't play native — so we DO drop them.
-  return false;
-}
-
-export async function fetchIdChannels(): Promise<IdChannel[]> {
-  const res = await fetch(ID_PLAYLIST_URL, { cache: "no-store" });
-  if (!res.ok) throw new Error(`playlist ${res.status}`);
-  const all = parsePlaylist(await res.text());
-  // keep only playable (CORS-open) + dedupe by URL host+name
-  const seen = new Set<string>();
-  const filtered: IdChannel[] = [];
-  for (const c of all) {
-    if (!isCorsOpen(c.url)) continue;
-    const k = c.name.toLowerCase();
-    if (seen.has(k)) continue;
-    seen.add(k);
-    filtered.push(c);
-  }
-  return filtered;
-}
-
-export async function fetchChannel(id: string): Promise<IdChannel | null> {
-  const all = await fetchIdChannels();
-  return all.find((c) => c.id === id) ?? null;
 }
