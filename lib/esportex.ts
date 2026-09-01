@@ -26,6 +26,7 @@ export interface EsxEvent {
   league: string;
   id: string; // slug as id for routing
   category: string;
+  playable: boolean; // true when it has a ppv/numeric token (resolves via PPW)
 }
 
 export interface EsxResponse {
@@ -47,6 +48,7 @@ export async function fetchEsxCatalog(): Promise<EsxEvent[]> {
           ...ev,
           id: ev.slug,
           category: cat,
+          playable: hasPpv(ev),
         });
       }
     }
@@ -55,6 +57,13 @@ export async function fetchEsxCatalog(): Promise<EsxEvent[]> {
   return out.sort((a, b) =>
     (a.kickoff || "").localeCompare(b.kickoff || "")
   );
+}
+
+// An event is playable when it carries a numeric `ppv/{id}` token — those resolve
+// through the shared PPW network (embedindia) which works. Non-ppv tokens
+// (so/, em/, wec/) depend on esportex's anti-hotlink reset API → often fail.
+function hasPpv(ev: EsxEvent): boolean {
+  return (ev.iframes || []).some((fr) => /^ppv\/\d+$/.test(decodeToken(fr.url.split("#").pop() ?? "")));
 }
 
 export async function fetchEsxEvent(slug: string): Promise<EsxEvent | null> {
@@ -116,3 +125,36 @@ export async function fetchPpvEmbed(ppvId: string): Promise<string | null> {
     return null;
   }
 }
+
+// ---- multi-source list for an event ----
+export interface EsxSource {
+  key: string;        // e.g. "ppv-27726" or server name
+  server: string;     // e.g. "FHD/iOS"
+  iframe: string;     // embed to load (ppv-index embed OR esx player)
+  ppvId?: string;
+}
+
+// Return ordered playable sources — ppv-index (resolvable) first, then the rest.
+export function listSources(ev: EsxEvent): EsxSource[] {
+  const ppv: EsxSource[] = [];
+  const others: EsxSource[] = [];
+  const seen = new Set<string>();
+  for (const fr of ev.iframes || []) {
+    const tok = fr.url.split("#").pop() ?? "";
+    const dec = decodeToken(tok);
+    if (seen.has(dec)) continue;
+    seen.add(dec);
+    if (/^ppv\/\d+$/.test(dec)) {
+      ppv.push({
+        key: `ppv-${dec.split("/")[1]}`,
+        server: fr.server,
+        iframe: fr.url,
+        ppvId: dec.split("/")[1],
+      });
+    } else {
+      others.push({ key: dec, server: fr.server, iframe: fr.url });
+    }
+  }
+  return [...ppv, ...others];
+}
+
