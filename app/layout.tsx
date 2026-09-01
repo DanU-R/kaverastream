@@ -33,6 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <nav className="flex items-center gap-5 text-sm text-muted-foreground">
               <NavLink href="/">Live</NavLink>
               <NavLink href="/iptv">IPTV</NavLink>
+              <NavLink href="/idtv">Indonesia</NavLink>
               <NavLink href="/vods">On-Demand</NavLink>
             </nav>
           </div>

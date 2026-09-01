@@ -18,10 +18,17 @@ Next.js 16 (App Router) + Tailwind. All data fetched client-side (both APIs send
 94 live DASH channels (CENC-DRM, clearKeys embedded). Fetched with cache-buster.
 Channel ids map to broadcast names (beIN, DAZN, Sky, Milan/Inter TV, UFC, F1 TV…).
 
+### 3. Indonesia TV — public Indonesian playlist (`riotryulianto/iptv-playlists`)
+62 local+premium channels (ANTV, RCTI, Indosiar, SCTV, Metro TV, CNN/CNBC ID,
+TVRI, MNC, Trans7, NET, DAAI, Kompas, plus cinema/sports premium…). Served via a
+**serverless HLS proxy** (`/api/p/stream`) that fetches upstream server-side and
+full-rebases every manifest/segment URI → no CORS / client-DNS issues.
+
 ## Features
 - **Live** — Live Now (auto-refresh + viewer count), Upcoming per category
 - **Event detail** — embedded player frame
 - **IPTV** — searchable 94-channel grid + DRM player (Shaka Player + clearKeys)
+- **Indonesia** — searchable/groupable 62-channel country grid + HLS player (proxy-backed)
 - **On-Demand** — VOD catalog + HLS playback
 
 ## Stack
