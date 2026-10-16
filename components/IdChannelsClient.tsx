@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import Link from "next/link";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { ALL_ID_CHANNELS, IdChannel } from "@/lib/id-channels";
 
 export default function IdChannelsClient() {
@@ -43,23 +42,11 @@ export default function IdChannelsClient() {
 
       {/* Player */}
       {activeChannel && (
-        <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-black">
-          <div className="flex items-center justify-between bg-surface-container px-4 py-2">
-            <span className="flex items-center gap-2 text-sm font-medium">
-              <span className="flex items-center gap-1 rounded-full bg-secondary-container/80 px-2 py-0.5 text-[10px] font-bold text-white">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> LIVE
-              </span>
-              {activeChannel.name}
-            </span>
-            <button onClick={() => setActiveChannel(null)}
-              className="text-on-surface-variant hover:text-on-surface">✕</button>
-          </div>
-          <div className="aspect-video">
-            <video className="h-full w-full" controls autoPlay playsInline>
-              <source src={activeChannel.url} type="application/vnd.apple.mpegurl" />
-            </video>
-          </div>
-        </div>
+        <HlsPlayer
+          key={activeChannel.url}
+          channel={activeChannel}
+          onClose={() => setActiveChannel(null)}
+        />
       )}
 
       {/* Channel grid */}
@@ -82,6 +69,118 @@ export default function IdChannelsClient() {
         ))}
       </div>
       {!filtered.length && <p className="py-10 text-center text-on-surface-variant">Tidak ada channel cocok.</p>}
+    </div>
+  );
+}
+
+function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => void }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const hlsRef = useRef<any>(null);
+  const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    let destroyed = false;
+
+    async function init() {
+      // Native HLS (Safari/iOS)
+      if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        video.src = channel.url;
+        video.addEventListener("loadedmetadata", () => { if (!destroyed) setStatus("playing"); });
+        video.addEventListener("error", () => { if (!destroyed) setStatus("error"); });
+        return;
+      }
+
+      // hls.js
+      try {
+        const Hls = (await import("hls.js")).default;
+        if (!Hls.isSupported()) { setStatus("error"); return; }
+
+        const hls = new Hls({
+          maxBufferLength: 30,
+          maxMaxBufferLength: 60,
+          liveSyncDurationCount: 3,
+          enableWorker: true,
+          fragLoadingMaxRetry: 4,
+          manifestLoadingMaxRetry: 3,
+        });
+
+        hlsRef.current = hls;
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(channel.url));
+        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+          if (destroyed) return;
+          setStatus("playing");
+          video.play().catch(() => {});
+        });
+        hls.on(Hls.Events.ERROR, (_e: any, data: any) => {
+          if (destroyed) return;
+          if (data.fatal) {
+            switch (data.type) {
+              case Hls.ErrorTypes.NETWORK_ERROR:
+                hls.startLoad();
+                break;
+              case Hls.ErrorTypes.MEDIA_ERROR:
+                hls.recoverMediaError();
+                break;
+              default:
+                setStatus("error");
+                break;
+            }
+          }
+        });
+      } catch {
+        if (!destroyed) setStatus("error");
+      }
+    }
+
+    init();
+
+    return () => {
+      destroyed = true;
+      if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+    };
+  }, [channel.url]);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-black">
+      <div className="flex items-center justify-between bg-surface-container px-4 py-2">
+        <span className="flex items-center gap-2 text-sm font-medium">
+          {status === "playing" && (
+            <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> LIVE
+            </span>
+          )}
+          {status === "loading" && (
+            <span className="flex items-center gap-2 text-xs text-on-surface-variant">
+              <span className="h-3 w-3 animate-spin rounded-full border border-primary-container/30 border-t-primary-container" />
+              Memuat...
+            </span>
+          )}
+          {channel.name}
+        </span>
+        <button onClick={onClose} className="text-on-surface-variant hover:text-on-surface">✕</button>
+      </div>
+      <div className="relative aspect-video">
+        {status === "error" ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black">
+            <span className="text-3xl">📡</span>
+            <span className="text-sm text-white/50">Channel sedang offline atau geo-blocked</span>
+            <span className="text-xs text-white/30">Coba channel lain</span>
+          </div>
+        ) : (
+          <>
+            <video ref={videoRef} className="h-full w-full" controls autoPlay playsInline />
+            {status === "loading" && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black">
+                <div className="h-10 w-10 animate-spin rounded-full border-2 border-primary-container/20 border-t-primary-container" />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
