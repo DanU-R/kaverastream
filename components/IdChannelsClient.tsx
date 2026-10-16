@@ -81,15 +81,16 @@ function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => vo
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+    const v = video;
 
     let destroyed = false;
 
     async function init() {
       // Native HLS (Safari/iOS)
-      if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = channel.url;
-        video.addEventListener("loadedmetadata", () => { if (!destroyed) setStatus("playing"); });
-        video.addEventListener("error", () => { if (!destroyed) setStatus("error"); });
+      if (v.canPlayType("application/vnd.apple.mpegurl")) {
+        v.src = channel.url;
+        v.addEventListener("loadedmetadata", () => { if (!destroyed) setStatus("playing"); });
+        v.addEventListener("error", () => { if (!destroyed) setStatus("error"); });
         return;
       }
 
