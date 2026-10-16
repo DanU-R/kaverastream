@@ -121,7 +121,7 @@ async function fetchViaPlaywright(segUrl: string, streamId: string): Promise<Nex
 
   let chromium: any;
   try {
-    const pw = await import("playwright");
+    const pw = await (0, eval)('import("playwright")');
     chromium = pw.chromium;
   } catch {
     return null;

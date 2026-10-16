@@ -93,7 +93,8 @@ async function extractM3u8ViaInterceptor(embedUrl: string, streamId: string): Pr
 
   let chromium: any;
   try {
-    const pw = await import("playwright");
+    // Use eval to prevent bundler from trying to resolve playwright
+    const pw = await (0, eval)('import("playwright")');
     chromium = pw.chromium;
   } catch {
     return null; // Playwright not available (Vercel)
