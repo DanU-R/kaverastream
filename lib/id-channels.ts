@@ -1,7 +1,25 @@
-// Indonesian TV channels from iptv-org (113 verified working m3u8 streams)
+// Indonesian TV channels — major networks + regional channels from iptv-org
+// Geo-blocked channels (Trans7, CNN, Metro TV) work from Indonesia but not from VPS
 export interface IdChannel { name: string; url: string; logo: string; group: string; }
 
 export const ALL_ID_CHANNELS: IdChannel[] = [
+  { name: "RCTI", url: "https://vcdn2.rctiplus.id/live/eds/rcti_fta/live_fta/rcti_fta.m3u8", logo: "", group: "Major" },
+  { name: "MNCTV", url: "https://vcdn2.rctiplus.id/live/eds/mnctv_fta/live_fta/mnctv_fta.m3u8", logo: "", group: "Major" },
+  { name: "GTV", url: "https://vcdn2.rctiplus.id/live/eds/gtv_fta/live_fta/gtv_fta.m3u8", logo: "", group: "Major" },
+  { name: "iNews", url: "https://vcdn2.rctiplus.id/live/eds/inews_fta/live_fta/inews_fta.m3u8", logo: "", group: "Major" },
+  { name: "SCTV", url: "https://vcdnjt.useetv.com/joss/15/sctv/chunklist_w457941769_b684100_sleng_177560.m3u8", logo: "", group: "Major" },
+  { name: "Indosiar", url: "https://vcdnjt.useetv.com/joss/15/indosiar/chunklist_w216473056_b684100_sleng_177560.m3u8", logo: "", group: "Major" },
+  { name: "ANTV", url: "https://vcdnjt.useetv.com/joss/15/antv/chunklist_w1093587531_b684100_sleng_177560.m3u8", logo: "", group: "Major" },
+  { name: "NET TV", url: "https://cdnbpp1.useetv.com/joss/15/net/chunklist_w1761005650_b894100_sleng_310393.m3u8", logo: "", group: "Major" },
+  { name: "TV One", url: "http://chostv.mobie.in/files/iptv/tvone.m3u8", logo: "", group: "Major" },
+  { name: "JakTV", url: "https://cdnbpp1.useetv.com/joss/14/jaktv/chunklist_w1342810570_b684100_sleng_122404.m3u8", logo: "", group: "Major" },
+  { name: "Trans7", url: "https://video.detik.com/trans7/smil:trans7.smil/playlist.m3u8", logo: "", group: "Major" },
+  { name: "Trans TV", url: "https://video.detik.com/transtv/smil:transtv.smil/playlist.m3u8", logo: "", group: "Major" },
+  { name: "CNN Indonesia", url: "https://live.cnnindonesia.com/livecnn/smil:cnntv.smil/playlist.m3u8", logo: "", group: "News" },
+  { name: "CNBC Indonesia", url: "https://live.cnbcindonesia.com/livecnbc/smil:cnbctv.smil/playlist.m3u8", logo: "", group: "News" },
+  { name: "Metro TV", url: "https://edge.metrotvnews.com:1935/live-edge/smil:metro.smil/playlist.m3u8", logo: "", group: "News" },
+  { name: "BeritaSatu", url: "https://b1news.beritasatumedia.com/Beritasatu/B1News_manifest.m3u8", logo: "", group: "News" },
+  { name: "Kompas TV", url: "http://rr2.dens.tv/s/s104/01.m3u8", logo: "", group: "Major" },
   { name: "Ahsan TV", url: "https://5bf7b725107e5.streamlock.net/ahsantv/ahsantv/playlist.m3u8", logo: "https://i.imgur.com/dZdUbYd.png", group: "Religious" },
   { name: "AKTV (1080p) [Not 24/7]", url: "https://akativi.siar.us/live/akativi.m3u8", logo: "https://i.imgur.com/DUY5WXf.png", group: "General" },
   { name: "Al-Bahjah TV (1080p)", url: "http://202.150.161.117:8000/play/AlBahjahTV", logo: "https://i.imgur.com/52dlDZk.png", group: "Religious" },
