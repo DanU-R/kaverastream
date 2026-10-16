@@ -7,6 +7,7 @@ const NAV: [string, string, string][] = [
   ["/", "home", "Home"],
   ["/esportex", "sensors", "Live"],
   ["/esportex", "calendar_today", "Schedule"],
+  ["/tv-indonesia", "live_tv", "TV Indonesia"],
   ["/vods", "tv", "Channels"],
   ["/vods", "star", "Favorites"],
   ["/esportex", "sports_soccer", "Leagues"],

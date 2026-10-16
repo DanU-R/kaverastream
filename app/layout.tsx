@@ -62,7 +62,7 @@ function MobileBottomNav() {
   const items: [string, string, string][] = [
     ["/", "home", "Home"],
     ["/esportex", "sensors", "Live"],
-    ["/esportex", "calendar_today", "Schedule"],
+    ["/tv-indonesia", "live_tv", "TV ID"],
     ["/vods", "tv", "Channels"],
   ];
   return (

@@ -5,10 +5,9 @@ import { usePathname } from "next/navigation";
 
 const SPORT_TABS: [string, string][] = [
   ["/", "Football"],
-  ["/esportex", "Basketball"],
-  ["/esportex", "Tennis"],
-  ["/esportex", "Motorsport"],
-  ["/esportex", "Combat Sports"],
+  ["/esportex", "All Sports"],
+  ["/tv-indonesia", "TV Indonesia"],
+  ["/vods", "VOD"],
 ];
 
 export default function TopNavbar({ mobile = false }: { mobile?: boolean }) {
