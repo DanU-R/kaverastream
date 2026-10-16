@@ -1,24 +1,40 @@
-// Data layer for the KaveraStream home: maps ppv streams + esportex into a
-// unified "match" feed and derives live/schedule. All fields come from the
-// real API (viewers, poster, channel/source_tag, category, kickoff). Scores
-// are NOT fabricated — the upstream API exposes none and external score DBs
-// don't overlap this event universe.
+// Unified feed: PPW streams + EsportEx events → sorted with football first.
 import { Stream, fetchStreams, isLive } from "@/lib/api";
 import { EsxEvent, esxStatus, fetchEsxCatalog } from "@/lib/esportex";
 
 export interface MatchRow {
   id: string;
   title: string;
-  league: string;       // real category
-  channel?: string;     // source_tag (broadcast provider)
-  venue?: string;
+  league: string;
+  channel?: string;
+  sport: string;
   status: "live" | "scheduled" | "finished";
-  minute?: string;
   viewers?: number;
-  accent?: [string, string]; // stream colors -> card accent
   poster?: string;
   href: string;
+  kickoff?: number;
   source: "ppv" | "esx";
+}
+
+// Sport priority: football first, then others alphabetical
+const SPORT_PRIORITY: Record<string, number> = {
+  football: 0,
+  american_football: 1,
+  amfootball: 1,
+  basketball: 2,
+  hockey: 3,
+  baseball: 4,
+  canadian_football: 5,
+  fight: 6,
+  race: 7,
+  badminton: 8,
+  tennis: 9,
+  other: 99,
+};
+
+function sportPriority(sport: string): number {
+  const s = sport.toLowerCase().replace(/\s+/g, "_");
+  return SPORT_PRIORITY[s] ?? 99;
 }
 
 export async function loadFeed(): Promise<MatchRow[]> {
@@ -30,20 +46,17 @@ export async function loadFeed(): Promise<MatchRow[]> {
     for (const g of ppvRes.value) {
       for (const s of g.streams ?? []) {
         const live = isLive(s, now);
-        const accent: [string, string] = (s as any).colors?.length
-          ? (s as any).colors
-          : ["#39e75f", "#1f7a3a"];
         rows.push({
           id: "ppv-" + s.id,
           title: s.name,
           league: s.category_name || g.category,
           channel: s.source_tag || undefined,
-          status: live ? "live" : "scheduled",
-          minute: live ? "LIVE" : undefined,
-          viewers: s.viewers ?? 0,
-          accent,
+          sport: (s.category_name || g.category || "").toLowerCase().replace(/\s+/g, "_"),
+          status: live ? "live" : s.always_live ? "live" : "scheduled",
+          viewers: typeof s.viewers === "number" ? s.viewers : 0,
           poster: s.poster,
           href: `/event/${s.id}`,
+          kickoff: s.starts_at || undefined,
           source: "ppv",
         });
       }
@@ -52,54 +65,74 @@ export async function loadFeed(): Promise<MatchRow[]> {
 
   if (esxRes.status === "fulfilled") {
     for (const e of esxRes.value) {
-      if (!e.playable) continue;
       const st = esxStatus(e);
       rows.push({
         id: "esx-" + e.slug,
         title: e.tag,
         league: e.league,
-        venue: e.category,
+        sport: e.category.toLowerCase().replace(/\s+/g, "_"),
         status: st === "live" ? "live" : st === "upcoming" ? "scheduled" : "finished",
-        minute: st === "live" ? "LIVE" : undefined,
         poster: e.poster,
         href: `/esportex/${e.slug}`,
+        kickoff: e.kickoff ? new Date(e.kickoff.replace(" ", "T")).getTime() / 1000 : undefined,
         source: "esx",
       });
     }
   }
 
-  return rows;
+  // Sort: live first, then football, then by sport priority, then by kickoff time
+  return rows.sort((a, b) => {
+    if (a.status === "live" && b.status !== "live") return -1;
+    if (a.status !== "live" && b.status === "live") return 1;
+    const sp = sportPriority(a.sport) - sportPriority(b.sport);
+    if (sp !== 0) return sp;
+    return (a.kickoff ?? 0) - (b.kickoff ?? 0);
+  });
 }
 
 export function liveMatches(rows: MatchRow[]): MatchRow[] {
   return rows.filter((r) => r.status === "live");
 }
+
 export function scheduledMatches(rows: MatchRow[]): MatchRow[] {
-  return rows.filter((r) => r.status === "scheduled");
+  return rows.filter((r) => r.status === "scheduled").slice(0, 12);
 }
 
-// Real league list derived from the live feed (category + live count).
-export function realLeagues(rows: MatchRow[]): { name: string; live: number }[] {
-  const map = new Map<string, number>();
-  for (const r of rows) {
-    if (!r.league) continue;
-    map.set(r.league, (map.get(r.league) ?? 0) + (r.status === "live" ? 1 : 0));
-  }
-  return [...map.entries()]
-    .map(([name, live]) => ({ name, live }))
-    .sort((a, b) => b.live - a.live)
-    .slice(0, 8);
+export function footballMatches(rows: MatchRow[]): MatchRow[] {
+  return rows.filter((r) =>
+    r.sport === "football" || r.sport === "american_football" || r.sport === "canadian_football"
+  );
 }
 
-// Favorite-team seed: teams currently live (from title), for local favorite list.
-export function liveTeams(rows: MatchRow[]): string[] {
-  const out = new Set<string>();
+export function bySport(rows: MatchRow[]): { sport: string; label: string; matches: MatchRow[] }[] {
+  const groups = new Map<string, MatchRow[]>();
   for (const r of rows) {
-    if (r.status !== "live") continue;
-    for (const part of r.title.split(/\s+(?:vs\.?|at|v)\s+/i)) {
-      const t = part.trim();
-      if (t && t.length > 2 && t.length < 40) out.add(t);
-    }
+    const key = r.sport || "other";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(r);
   }
-  return [...out];
+  return [...groups.entries()]
+    .map(([sport, matches]) => ({
+      sport,
+      label: sportLabel(sport),
+      matches,
+    }))
+    .sort((a, b) => sportPriority(a.sport) - sportPriority(b.sport));
+}
+
+export function sportLabel(sport: string): string {
+  const labels: Record<string, string> = {
+    football: "⚽ Sepak Bola",
+    american_football: "🏈 American Football",
+    amfootball: "🏈 American Football",
+    basketball: "🏀 Basket",
+    hockey: "🏒 Hoki",
+    baseball: "⚾ Baseball",
+    canadian_football: "🏈 CFL",
+    fight: "🥊 Fight",
+    race: "🏎️ Race",
+    badminton: "🏸 Badminton",
+    tennis: "🎾 Tennis",
+  };
+  return labels[sport] || sport.charAt(0).toUpperCase() + sport.slice(1);
 }

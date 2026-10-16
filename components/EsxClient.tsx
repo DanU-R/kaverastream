@@ -14,16 +14,23 @@ function status(ev: EsxEvent): "live" | "upcoming" | "ended" {
   return "live";
 }
 
+const SPORT_ORDER: Record<string, number> = {
+  football: 0, american_football: 1, amfootball: 1, basketball: 2,
+  hockey: 3, baseball: 4, canadian_football: 5, fight: 6, race: 7, badminton: 8, tennis: 9,
+};
+
+const SPORT_LABELS: Record<string, string> = {
+  football: "⚽ Sepak Bola", american_football: "🏈 NFL/CFL", amfootball: "🏈 NFL/CFL",
+  basketball: "🏀 Basket", hockey: "🏒 Hoki", baseball: "⚾ Baseball",
+  canadian_football: "🏈 CFL", fight: "🥊 Fight", race: "🏎️ Race", badminton: "🏸 Badminton", tennis: "🎾 Tennis",
+};
+
 export default function EsxClient() {
   const [events, setEvents] = useState<EsxEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [q, setQ] = useState("");
-  const cats = useMemo(() => {
-    const s = new Set(events.map((e) => e.category));
-    return ["All", ...Array.from(s)];
-  }, [events]);
-  const [cat, setCat] = useState("All");
+  const [cat, setCat] = useState("all");
   const [filter, setFilter] = useState<"all" | "live" | "upcoming">("all");
 
   useEffect(() => {
@@ -32,157 +39,117 @@ export default function EsxClient() {
       .then((d) => live && setEvents(d))
       .catch((e: any) => live && setError(String(e?.message ?? e)))
       .finally(() => live && setLoading(false));
-    return () => {
-      live = false;
-    };
+    return () => { live = false; };
   }, []);
 
-  const liveCount = useMemo(
-    () => events.filter((e) => e.playable && status(e) === "live").length,
-    [events]
-  );
+  const cats = useMemo(() => {
+    const s = new Set(events.map((e) => e.category));
+    return [{ value: "all", label: "Semua" }, ...Array.from(s).map((c) => ({ value: c, label: SPORT_LABELS[c] || c }))];
+  }, [events]);
+
   const list = useMemo(() => {
     let l = events;
     if (filter === "live") l = l.filter((e) => e.playable && status(e) === "live");
     else if (filter === "upcoming") l = l.filter((e) => status(e) === "upcoming");
-    if (cat !== "All") l = l.filter((e) => e.category === cat);
+    if (cat !== "all") l = l.filter((e) => e.category === cat);
     if (q.trim()) {
       const s = q.toLowerCase();
-      l = l.filter(
-        (e) => e.tag.toLowerCase().includes(s) || e.league.toLowerCase().includes(s)
-      );
+      l = l.filter((e) => e.tag.toLowerCase().includes(s) || e.league.toLowerCase().includes(s));
     }
-    // prioritize playable + live first
-    return [...l].sort(
-      (a, b) =>
-        Number(b.playable) - Number(a.playable) ||
-        Number(status(b) === "live") - Number(status(a) === "live")
-    );
-  }, [events, cat, q, filter, liveCount]);
+    return [...l].sort((a, b) => {
+      // Football first
+      const sa = SPORT_ORDER[a.category] ?? 99;
+      const sb = SPORT_ORDER[b.category] ?? 99;
+      if (sa !== sb) return sa - sb;
+      // Live first
+      if (status(a) === "live" && status(b) !== "live") return -1;
+      if (status(a) !== "live" && status(b) === "live") return 1;
+      // Then by kickoff
+      return (a.kickoff || "").localeCompare(b.kickoff || "");
+    });
+  }, [events, cat, q, filter]);
+
+  const liveCount = useMemo(() => events.filter((e) => e.playable && status(e) === "live").length, [events]);
+  const footballCount = useMemo(() => events.filter((e) => e.category === "football").length, [events]);
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">
-            EsportEx <span className="text-accent">· Live</span>
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {events.length} events —{" "}
-            {liveCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 text-emerald-300">
-                <span className="h-2 w-2 animate-pulse rounded-full text" />
-                {liveCount} live sekarang
-              </span>
-            )}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex overflow-hidden rounded-lg border border-border text-sm">
-            {(["all", "live", "upcoming"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 capitalize transition ${
-                  filter === f ? "bg-surface-2 text-zinc-50" : "text-muted-foreground hover:text-zinc-50"
-                }`}
-              >
-                {f === "live" ? (liveCount ? `Live (${liveCount})` : "Live") : f}
-              </button>
-            ))}
-          </div>
-          <select
-            value={cat}
-            onChange={(e) => setCat(e.target.value)}
-            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm"
-          >
-            {cats.map((c) => (
-              <option key={c} value={c}>
-                {c === "All" ? "All sports" : c}
-              </option>
-            ))}
-          </select>
-          <input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Cari tim / liga…"
-            className="rounded-lg border border-border bg-surface px-3 py-2 text-sm focus:outline-none focus:border-white/30"
-          />
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold">Jadwal & Live</h1>
+        <p className="mt-1 text-sm text-white/40">
+          {events.length} events
+          {footballCount > 0 && <span className="ml-2 text-emerald-400">⚽ {footballCount} sepak bola</span>}
+          {liveCount > 0 && <span className="ml-2 text-red-400">● {liveCount} live</span>}
+        </p>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="h-56 animate-pulse rounded-xl bg-surface" />
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex overflow-hidden rounded-lg border border-white/10 text-sm">
+          {(["all", "live", "upcoming"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={`px-3 py-1.5 capitalize transition ${filter === f ? "bg-emerald-500/20 text-emerald-400" : "text-white/40 hover:text-white/70"}`}>
+              {f === "live" ? (liveCount ? `Live (${liveCount})` : "Live") : f === "all" ? "Semua" : "Upcoming"}
+            </button>
           ))}
         </div>
-      ) : error ? (
-        <div className="rounded-xl border border-live/30 bg-live/10 p-4 text-live">
-          Gagal muat: {error}
+        <select value={cat} onChange={(e) => setCat(e.target.value)}
+          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-emerald-500/30">
+          {cats.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+        </select>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari tim / liga..."
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-emerald-500/30" />
+      </div>
+
+      {/* Content */}
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-52 animate-pulse rounded-xl bg-white/5" />)}
         </div>
+      ) : error ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-400">Gagal muat: {error}</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {list.map((e) => (
-            <Link
-              key={e.id}
-              href={`/esportex/${e.id}`}
-              className="group glass overflow-hidden rounded-2xl transition hover:border-accent-dim/60 hover:shadow-[0_0_24px_rgba(16,185,129,0.15)]"
-            >
-              <div className="relative aspect-video bg-surface-dim overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={e.poster}
-                  alt={e.tag}
-                  className="h-full w-full object-cover transition group-hover:scale-105"
-                  loading="lazy"
-                />
-                <div className="absolute top-2 left-2 flex gap-2">
-                  <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs">{e.category}</span>
+            <Link key={e.id} href={`/esportex/${e.id}`}
+              className="group overflow-hidden rounded-xl border border-white/10 bg-white/5 transition hover:border-emerald-500/30 hover:bg-white/[0.07]">
+              <div className="relative aspect-video overflow-hidden">
+                {e.poster ? (
+                  <img src={e.poster} alt={e.tag} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
+                ) : <div className="h-full w-full bg-gradient-to-br from-white/5 to-black" />}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute left-2 top-2 flex gap-1.5">
                   {!e.playable ? (
-                    <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs font-semibold text-zinc-300">
-                      ⚠ Tidak tersedia
-                    </span>
+                    <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white/40">⚠ N/A</span>
                   ) : status(e) === "live" ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-md bg-live px-2 py-0.5 text-xs font-bold text-white">
-                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                      LIVE
+                    <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                      <span className="h-1 w-1 animate-pulse rounded-full bg-white" /> LIVE
                     </span>
                   ) : status(e) === "upcoming" ? (
-                    <span className="rounded-md bg-accent/20 px-2 py-0.5 text-xs font-bold text-accent">
-                      UPCOMING
-                    </span>
+                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">SOON</span>
                   ) : (
-                    <span className="rounded-md bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground">
-                      ENDED
-                    </span>
+                    <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white/30">END</span>
                   )}
                 </div>
-                <span className="absolute bottom-2 right-2 rounded-md bg-surface-bright/80 px-2 py-0.5 text-[11px]">
-                  {(e.iframes || []).length} src
-                </span>
+                {(e.iframes || []).length > 0 && (
+                  <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white/50">{e.iframes.length} src</span>
+                )}
               </div>
-              <div className="p-3 space-y-1">
-                <div className="text-sm font-semibold line-clamp-2 leading-snug">{e.tag}</div>
-                <div className="text-xs text-muted-foreground">{e.league}</div>
-                {e.kickoff ? (
-                  <div className="text-xs text-muted-foreground/70">
-                    {new Date(e.kickoff.replace(" ", "T")).toLocaleString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}
-                  </div>
-                ) : null}
+              <div className="p-3">
+                <div className="line-clamp-2 text-sm font-medium leading-snug">{e.tag}</div>
+                <div className="mt-1 flex items-center gap-2 text-xs text-white/40">
+                  <span>{e.league}</span>
+                  {e.kickoff && (
+                    <span className="text-white/30">· {new Date(e.kickoff.replace(" ", "T")).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
+                  )}
+                </div>
               </div>
             </Link>
           ))}
         </div>
       )}
-      {!loading && !error && !list.length && (
-        <p className="text-muted-foreground py-10 text-center">Tidak ada event cocok.</p>
-      )}
+      {!loading && !error && !list.length && <p className="py-10 text-center text-white/40">Tidak ada event cocok.</p>}
     </div>
   );
 }

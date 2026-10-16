@@ -3,12 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { liveTeams } from "@/lib/home";
 
 const NAV = [
   ["/", "Beranda"],
-  ["/esportex", "Live Sekarang"],
-  ["/multiview", "Jadwal"],
+  ["/esportex", "Live & Jadwal"],
+  ["/multiview", "MultiView"],
   ["/vods", "Highlight"],
 ];
 
