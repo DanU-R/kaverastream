@@ -8,20 +8,23 @@ import TopNavbar from "@/components/TopNavbar";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "KAVERASTREAM — Nonton Bola Live",
-  description: "Platform streaming sepak bola modern. Live, jadwal, skor, highlight.",
+  title: "KaveraStream - Live Sports Hub",
+  description: "Live sports streaming platform. Watch live matches, schedules, scores, highlights.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={`${inter.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <head>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+      </head>
+      <body className="min-h-full bg-surface-container-lowest text-on-surface">
         {/* desktop shell */}
         <div className="hidden lg:flex">
           <Sidebar />
-          <div className="flex min-h-screen flex-1 flex-col pl-[240px]">
+          <div className="flex min-h-screen flex-1 flex-col lg:ml-60">
             <TopNavbar />
-            <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 lg:px-8">
+            <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-10 p-4 md:p-8">
               {children}
             </main>
             <FooterShell />
@@ -31,7 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {/* tablet/mobile shell */}
         <div className="lg:hidden">
           <TopNavbar mobile />
-          <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-4">{children}</main>
+          <main className="mx-auto w-full max-w-[1600px] flex-1 space-y-8 p-4">{children}</main>
           <MobileBottomNav />
           <FooterShell />
         </div>
@@ -42,11 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 function FooterShell() {
   return (
-    <footer className="border-t border-border px-6 py-6">
-      <div className="mx-auto flex max-w-[1500px] flex-col items-center justify-between gap-3 text-xs text-muted-soft sm:flex-row">
+    <footer className="border-t border-outline-variant/30 px-6 py-6">
+      <div className="mx-auto flex max-w-[1600px] flex-col items-center justify-between gap-3 text-xs text-outline sm:flex-row">
         <div className="flex gap-4">
-          {["Tentang Kami", "Ketentuan Layanan", "Kebijakan Privasi", "FAQ", "Kontak"].map((l) => (
-            <a key={l} href="#" className="hover:text-text-primary">{l}</a>
+          {["About Us", "Terms of Service", "Privacy Policy", "FAQ", "Contact"].map((l) => (
+            <a key={l} href="#" className="hover:text-on-surface">{l}</a>
           ))}
         </div>
         <span>© 2026 KaveraStream. All Rights Reserved.</span>
@@ -56,17 +59,18 @@ function FooterShell() {
 }
 
 function MobileBottomNav() {
-  const items = [
-    ["/", "Home"],
-    ["/esportex", "Live"],
-    ["/multiview", "Jadwal"],
-    ["/vods", "VOD"],
+  const items: [string, string, string][] = [
+    ["/", "home", "Home"],
+    ["/esportex", "sensors", "Live"],
+    ["/esportex", "calendar_today", "Schedule"],
+    ["/vods", "tv", "Channels"],
   ];
   return (
-    <nav className="fixed bottom-0 left-0 z-50 flex w-full border-t border-border bg-surface/95 backdrop-blur lg:hidden">
-      {items.map(([href, label]) => (
-        <Link key={href} href={href} className="flex-1 py-3 text-center text-xs text-muted-foreground hover:text-accent">
-          {label}
+    <nav className="fixed bottom-0 left-0 z-50 flex w-full border-t border-outline-variant/30 bg-surface/95 backdrop-blur lg:hidden">
+      {items.map(([href, icon, label]) => (
+        <Link key={label} href={href} className="flex flex-1 flex-col items-center gap-0.5 py-2 text-outline hover:text-primary-container">
+          <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{icon}</span>
+          <span className="text-[10px]">{label}</span>
         </Link>
       ))}
     </nav>

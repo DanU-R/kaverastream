@@ -59,8 +59,10 @@ export default function EsxClient() {
 
   const cats = useMemo(() => {
     const s = new Set(events.map((e) => e.category));
-    return [{ value: "all", label: "Semua" }, ...Array.from(s).map((c) => ({ value: c, label: sportLabel(normalizeSport(c)) }))];
+    return [{ value: "all", label: "All" }, ...Array.from(s).map((c) => ({ value: c, label: sportLabel(normalizeSport(c)) }))];
   }, [events]);
+
+  const liveCount = useMemo(() => events.filter((e) => e.playable && status(e) === "live").length, [events]);
 
   const list = useMemo(() => {
     let l = events;
@@ -72,99 +74,88 @@ export default function EsxClient() {
       l = l.filter((e) => e.tag.toLowerCase().includes(s) || e.league.toLowerCase().includes(s));
     }
     return [...l].sort((a, b) => {
-      // Football first (using normalized sport)
       const sa = SPORT_ORDER[normalizeSport(a.category)] ?? 99;
       const sb = SPORT_ORDER[normalizeSport(b.category)] ?? 99;
       if (sa !== sb) return sa - sb;
-      // Live first
       if (status(a) === "live" && status(b) !== "live") return -1;
       if (status(a) !== "live" && status(b) === "live") return 1;
-      // Then by kickoff
       return (a.kickoff || "").localeCompare(b.kickoff || "");
     });
   }, [events, cat, q, filter]);
 
-  const liveCount = useMemo(() => events.filter((e) => e.playable && status(e) === "live").length, [events]);
-  const footballCount = useMemo(() => events.filter((e) => e.category === "football").length, [events]);
-
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Jadwal & Live</h1>
-        <p className="mt-1 text-sm text-white/40">
+        <h1 className="text-2xl font-bold text-on-surface">Schedule &amp; Live</h1>
+        <p className="mt-1 text-sm text-outline">
           {events.length} events
-          {footballCount > 0 && <span className="ml-2 text-emerald-400">⚽ {footballCount} sepak bola</span>}
-          {liveCount > 0 && <span className="ml-2 text-red-400">● {liveCount} live</span>}
+          {liveCount > 0 && <span className="ml-2 text-primary-container">● {liveCount} live</span>}
         </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex overflow-hidden rounded-lg border border-white/10 text-sm">
+        <div className="flex overflow-hidden rounded-lg border border-outline-variant/40 text-sm">
           {(["all", "live", "upcoming"] as const).map((f) => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 capitalize transition ${filter === f ? "bg-emerald-500/20 text-emerald-400" : "text-white/40 hover:text-white/70"}`}>
-              {f === "live" ? (liveCount ? `Live (${liveCount})` : "Live") : f === "all" ? "Semua" : "Upcoming"}
+              className={`px-3 py-1.5 transition ${filter === f ? "bg-primary-container/20 text-primary-container" : "text-outline hover:text-on-surface"}`}>
+              {f === "live" ? (liveCount ? `Live (${liveCount})` : "Live") : f === "all" ? "All" : "Upcoming"}
             </button>
           ))}
         </div>
         <select value={cat} onChange={(e) => setCat(e.target.value)}
-          className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-emerald-500/30">
+          className="rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-1.5 text-sm text-on-surface outline-none focus:border-primary-container/30">
           {cats.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
         </select>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari tim / liga..."
-          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm outline-none focus:border-emerald-500/30" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search teams / leagues..."
+          className="flex-1 rounded-lg border border-outline-variant/40 bg-surface-container-low px-3 py-1.5 text-sm text-on-surface outline-none focus:border-primary-container/30" />
       </div>
 
-      {/* Content */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-          {Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-52 animate-pulse rounded-xl bg-white/5" />)}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          {Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-52 animate-pulse rounded-xl bg-surface-container-low" />)}
         </div>
       ) : error ? (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-400">Gagal muat: {error}</div>
+        <div className="rounded-xl border border-error-container/20 bg-error-container/10 p-4 text-error">Failed: {error}</div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
           {list.map((e) => (
             <Link key={e.id} href={`/esportex/${e.id}`}
-              className="group overflow-hidden rounded-xl border border-white/10 bg-white/5 transition hover:border-emerald-500/30 hover:bg-white/[0.07]">
-              <div className="relative aspect-video overflow-hidden">
-                {e.poster ? (
-                  <img src={e.poster} alt={e.tag} className="h-full w-full object-cover transition group-hover:scale-105" loading="lazy" />
-                ) : <div className="h-full w-full bg-gradient-to-br from-white/5 to-black" />}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+              className="group overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-low transition-all duration-200 hover:-translate-y-1 hover:border-primary-container/60">
+              <div className="relative aspect-video overflow-hidden bg-surface-container-highest">
+                {e.poster ? <img src={e.poster} alt={e.tag} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /> : <div className="h-full w-full bg-gradient-to-br from-surface-container to-surface-container-lowest" />}
                 <div className="absolute left-2 top-2 flex gap-1.5">
                   {!e.playable ? (
-                    <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white/40">⚠ N/A</span>
+                    <span className="rounded bg-surface-container-lowest/80 px-2 py-0.5 text-[11px] text-outline backdrop-blur">⚠ N/A</span>
                   ) : status(e) === "live" ? (
-                    <span className="flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                      <span className="h-1 w-1 animate-pulse rounded-full bg-white" /> LIVE
+                    <span className="flex items-center gap-1 rounded bg-secondary-container px-2 py-0.5 text-[11px] font-extrabold uppercase text-on-surface">
+                      <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" /> LIVE
                     </span>
                   ) : status(e) === "upcoming" ? (
-                    <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">SOON</span>
+                    <span className="rounded bg-primary-container/20 px-2 py-0.5 text-[11px] font-semibold text-primary-container">SOON</span>
                   ) : (
-                    <span className="rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white/30">END</span>
+                    <span className="rounded bg-surface-container-lowest/80 px-2 py-0.5 text-[11px] text-outline backdrop-blur">END</span>
                   )}
                 </div>
                 {(e.iframes || []).length > 0 && (
-                  <span className="absolute bottom-2 right-2 rounded-full bg-black/70 px-2 py-0.5 text-[10px] text-white/50">{e.iframes.length} src</span>
+                  <span className="absolute bottom-2 right-2 rounded bg-surface-container-lowest/80 px-2 py-0.5 text-[11px] text-outline backdrop-blur">{e.iframes.length} src</span>
                 )}
               </div>
-              <div className="p-3">
-                <div className="line-clamp-2 text-sm font-medium leading-snug">{e.tag}</div>
-                <div className="mt-1 flex items-center gap-2 text-xs text-white/40">
-                  <span>{e.league}</span>
-                  {e.kickoff && (
-                    <span className="text-white/30">· {new Date(e.kickoff.replace(" ", "T")).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>
-                  )}
+              <div className="space-y-1.5 p-3.5">
+                <div className="text-[11px] text-outline">{e.league}</div>
+                <h3 className="line-clamp-2 text-sm font-bold text-on-surface transition-colors group-hover:text-primary-container">{e.tag}</h3>
+                <div className="flex items-center justify-between border-t border-outline-variant/20 pt-1.5 text-[11px]">
+                  {e.kickoff && <span className="text-outline">{new Date(e.kickoff.replace(" ", "T")).toLocaleString(undefined, { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}</span>}
+                  <span className="flex items-center gap-1 text-primary-container">
+                    <span className="material-symbols-outlined" style={{ fontSize: 12, fontVariationSettings: "'FILL' 1" }}>play_circle</span>
+                    Stream
+                  </span>
                 </div>
               </div>
             </Link>
           ))}
         </div>
       )}
-      {!loading && !error && !list.length && <p className="py-10 text-center text-white/40">Tidak ada event cocok.</p>}
+      {!loading && !error && !list.length && <p className="py-10 text-center text-outline">No matching events.</p>}
     </div>
   );
 }

@@ -2,79 +2,77 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
-const NAV = [
-  ["/", "Beranda"],
-  ["/esportex", "Live & Jadwal"],
-  ["/multiview", "MultiView"],
-  ["/vods", "Highlight"],
+const NAV: [string, string, string][] = [
+  ["/", "home", "Home"],
+  ["/esportex", "sensors", "Live"],
+  ["/esportex", "calendar_today", "Schedule"],
+  ["/vods", "tv", "Channels"],
+  ["/vods", "star", "Favorites"],
+  ["/esportex", "sports_soccer", "Leagues"],
+  ["/settings", "settings", "Settings"],
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
-  const [favorites, setFavorites] = useState<string[]>([]);
-
-  useEffect(() => {
-    // persisted local favorites; if none yet, we seed later once feed loads
-    try {
-      const saved = localStorage.getItem("kv_favs");
-      setFavorites(saved ? JSON.parse(saved) : []);
-    } catch {}
-  }, []);
-
-  const toggle = (t: string) => {
-    const next = favorites.includes(t) ? favorites.filter((x) => x !== t) : [...favorites, t];
-    setFavorites(next);
-    try { localStorage.setItem("kv_favs", JSON.stringify(next)); } catch {}
-  };
+  const isActive = (href: string) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href);
 
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-[240px] flex-col border-r border-border bg-surface lg:flex">
-      <Link href="/" className="flex items-center gap-2 px-5 py-5 text-lg font-semibold tracking-tight">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent text-sm font-bold text-[#04120a]">⚽</span>
-        <span>KAVE<span className="text-accent">STREAM</span></span>
-      </Link>
-
-      <nav className="flex flex-col gap-0.5 px-3">
-        {NAV.map(([href, label]) => {
-          const active = pathname === href;
-          return (
-            <Link key={href} href={href}
-              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition ${
-                active ? "bg-surface-hover text-accent" : "text-muted-foreground hover:bg-surface-hover hover:text-text-primary"}`}>
-              <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              {label}
-            </Link>
-          );
-        })}
-      </nav>
-
-      <div className="mt-6 flex-1 overflow-y-auto px-3">
-        <div className="flex items-center justify-between px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-soft">
-          <span>Tim Favorit</span>
-          <span className="cursor-pointer text-accent hover:underline">Edit</span>
+    <aside className="fixed top-0 left-0 z-40 hidden h-screen w-60 flex-col border-r border-outline-variant/30 bg-surface-container-low lg:flex">
+      <div className="flex h-full flex-col justify-between p-4">
+        {/* Brand + Nav */}
+        <div className="flex flex-col gap-6">
+          <Link href="/" className="flex items-center gap-3 px-2 py-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-outline-variant/40 bg-surface-container-high text-primary-container shadow-inner">
+              <span className="material-symbols-outlined text-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>sensors</span>
+            </div>
+            <div>
+              <h1 className="text-lg font-extrabold tracking-tight text-on-surface">KaveraStream</h1>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-outline">Live Sports Hub</p>
+            </div>
+          </Link>
+          <nav className="flex flex-col gap-1.5" aria-label="Main Navigation">
+            {NAV.map(([href, icon, label]) => {
+              const active = isActive(href);
+              return (
+                <Link key={label} href={href}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-all duration-150 active:scale-[0.98] ${
+                    active
+                      ? "border-l-2 border-primary-container bg-surface-container-highest/40 text-primary-container font-semibold"
+                      : "text-on-surface-variant hover:bg-surface-container-high/50 hover:text-on-surface"
+                  }`}>
+                  <span className="material-symbols-outlined" style={active ? { fontVariationSettings: "'FILL' 1" } : {}}>{icon}</span>
+                  <span>{label}</span>
+                </Link>
+              );
+            })}
+          </nav>
         </div>
-        <div className="mt-2 flex flex-col gap-0.5">
-          {favorites.length ? (
-            favorites.map((t) => (
-              <button key={t} onClick={() => toggle(t)}
-                className="flex items-center justify-between rounded-lg px-3 py-2 text-left text-sm text-muted-foreground hover:bg-surface-hover hover:text-text-primary">
-                <span className="truncate">{t}</span>
-                <span className="text-accent">★</span>
-              </button>
-            ))
-          ) : (
-            <p className="px-3 text-xs text-muted-soft">Belum ada tim favorit.</p>
-          )}
-        </div>
-      </div>
 
-      <div className="p-4">
-        <div className="bstream-card !bg-surface-elevated border-accent/20 p-4">
-          <div className="text-sm font-semibold text-text-primary">👑 KAVERASTREAM PREMIUM</div>
-          <p className="mt-1 text-xs leading-relaxed text-muted-soft">Nonton tanpa iklan, kualitas HD/4K, akses semua liga.</p>
-          <button className="btn-accent mt-3 w-full px-3 py-2 text-xs">Berlangganan Sekarang</button>
+        {/* Pro card + footer */}
+        <div className="flex flex-col gap-4">
+          <div className="relative overflow-hidden rounded-xl border border-outline-variant/50 bg-gradient-to-br from-surface-container to-surface-container-high p-3.5">
+            <div className="absolute -bottom-4 -right-4 h-20 w-20 rounded-full bg-primary-container/10 blur-xl pointer-events-none"></div>
+            <div className="mb-1.5 flex items-center gap-2">
+              <span className="material-symbols-outlined text-base text-primary-container" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
+              <span className="text-[11px] font-bold uppercase text-primary-container">Ultra HD Access</span>
+            </div>
+            <p className="mb-3 text-xs leading-snug text-on-surface-variant">Unlock 4K 60fps streams &amp; 4-view multi-cam feeds.</p>
+            <button className="w-full rounded-lg bg-primary-container px-3 py-2 text-center text-sm font-bold text-on-primary-container transition-all duration-150 hover:bg-tertiary active:scale-[0.98]">
+              Upgrade to Pro
+            </button>
+          </div>
+          <div className="flex flex-col gap-1 border-t border-outline-variant/30 pt-2">
+            <a href="#" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-on-surface-variant transition-colors hover:bg-surface-container/50 hover:text-on-surface">
+              <span className="material-symbols-outlined text-sm">help</span>
+              <span>Help &amp; Support</span>
+            </a>
+            <a href="#" className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-secondary transition-colors hover:bg-secondary-container/20 hover:text-on-surface">
+              <span className="material-symbols-outlined text-sm">logout</span>
+              <span>Log Out</span>
+            </a>
+          </div>
         </div>
       </div>
     </aside>
