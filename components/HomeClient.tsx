@@ -98,8 +98,8 @@ export default function HomeClient() {
             <h2 className="text-lg font-bold">⚽ Sepak Bola</h2>
             <span className="text-sm text-white/40">{filteredFootball.length} pertandingan</span>
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredFootball.slice(0, 16).map((m) => <MatchCard key={m.id} m={m} />)}
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {filteredFootball.slice(0, 12).map((m) => <MatchCard key={m.id} m={m} />)}
           </div>
         </section>
       )}
@@ -113,8 +113,8 @@ export default function HomeClient() {
               <h2 className="text-lg font-bold">{sportLabel(s.sport)}</h2>
               <span className="text-sm text-white/40">{s.matches.length}</span>
             </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {s.matches.slice(0, 8).map((m) => <MatchCard key={m.id} m={m} />)}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {s.matches.slice(0, 6).map((m) => <MatchCard key={m.id} m={m} />)}
             </div>
           </section>
         ))

@@ -119,13 +119,13 @@ export default function EsxClient() {
 
       {/* Content */}
       {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {Array.from({ length: 12 }).map((_, i) => <div key={i} className="h-52 animate-pulse rounded-xl bg-white/5" />)}
         </div>
       ) : error ? (
         <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-4 text-red-400">Gagal muat: {error}</div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {list.map((e) => (
             <Link key={e.id} href={`/esportex/${e.id}`}
               className="group overflow-hidden rounded-xl border border-white/10 bg-white/5 transition hover:border-emerald-500/30 hover:bg-white/[0.07]">

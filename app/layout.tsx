@@ -21,7 +21,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <Sidebar />
           <div className="flex min-h-screen flex-1 flex-col pl-[240px]">
             <TopNavbar />
-            <main className="mx-auto w-full max-w-[1500px] flex-1 px-6 py-6">
+            <main className="mx-auto w-full max-w-[1200px] flex-1 px-4 py-6 lg:px-8">
               {children}
             </main>
             <FooterShell />

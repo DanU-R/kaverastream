@@ -128,6 +128,14 @@ export async function loadFeed(): Promise<MatchRow[]> {
     if (sp !== 0) return sp;
     // Soonest kickoff first
     return (a.kickoff ?? 0) - (b.kickoff ?? 0);
+  }).filter((row, idx, arr) => {
+    // Deduplicate by title (PPW + EsportEx may have the same event)
+    const titleKey = row.title.toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 40);
+    for (let i = 0; i < idx; i++) {
+      const prevKey = arr[i].title.toLowerCase().replace(/[^a-z0-9]/g, "").substring(0, 40);
+      if (prevKey === titleKey) return false;
+    }
+    return true;
   });
 }
 
