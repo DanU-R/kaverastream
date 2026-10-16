@@ -1,7 +1,24 @@
 // Indonesian TV channels — 109 verified working m3u8 streams from iptv-org
-export interface IdChannel { name: string; url: string; logo: string; group: string; }
+// Plus 7 major channels from RCTI+ (RCTI, MNCTV, GTV, iNews via Playwright; Trans TV, Trans 7, Metro TV via DASH)
+export interface IdChannel {
+  name: string;
+  url: string;
+  logo: string;
+  group: string;
+  type?: "hls" | "dash" | "hls-proxy";
+}
 
 export const ALL_ID_CHANNELS: IdChannel[] = [
+  // === RCTI+ Major Channels (HLS via Playwright extraction) ===
+  { name: "RCTI", url: "/api/tv/rcti", logo: "https://upload.wikimedia.org/wikipedia/commons/8/81/RCTI_2015.svg", group: "Major", type: "hls-proxy" },
+  { name: "MNCTV", url: "/api/tv/mnctv", logo: "https://upload.wikimedia.org/wikipedia/commons/e/e8/MNC_TV_logo_2020.svg", group: "Major", type: "hls-proxy" },
+  { name: "GTV", url: "/api/tv/gtv", logo: "https://upload.wikimedia.org/wikipedia/commons/5/59/GTV_2017.svg", group: "Major", type: "hls-proxy" },
+  { name: "iNews", url: "/api/tv/inews", logo: "https://upload.wikimedia.org/wikipedia/commons/a/a5/INews_logo.svg", group: "Major", type: "hls-proxy" },
+  // === RCTI+ Major Channels (DASH via CloudFront, static URLs) ===
+  { name: "Trans TV", url: "https://d2xz2v5wuvgur6.cloudfront.net/out/v1/7a69cfc9e135493f87ac4efd63000429/index.mpd", logo: "https://upload.wikimedia.org/wikipedia/commons/2/22/Logo_Trans_TV_2013.svg", group: "Major", type: "dash" },
+  { name: "Trans 7", url: "https://d2tjypxxy769fn.cloudfront.net/out/v1/0fd7b7d368bc44bc9b4dece20acc3e33/index.mpd", logo: "https://upload.wikimedia.org/wikipedia/commons/6/63/Logo_Trans7_2013.svg", group: "Major", type: "dash" },
+  { name: "Metro TV", url: "https://d2tjypxxy769fn.cloudfront.net/out/v1/fd4360b1c12c4375848c8f085fd51d41/index.mpd", logo: "https://upload.wikimedia.org/wikipedia/commons/8/8d/Metro_TV_2011.svg", group: "Major", type: "dash" },
+  // === iptv-org channels ===
   { name: "TV One", url: "http://chostv.mobie.in/files/iptv/tvone.m3u8", logo: "", group: "Major" },
   { name: "Metro TV (Indonesia)", url: "https://edge.medcom.id/live-edge/smil:metro.smil/playlist.m3u8", logo: "https://i.imgur.com/QnU70NI.png", group: "News" },
   { name: "AKTV", url: "https://akativi.siar.us/live/akativi.m3u8", logo: "https://i.imgur.com/DUY5WXf.png", group: "General" },

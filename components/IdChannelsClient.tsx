@@ -3,6 +3,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { ALL_ID_CHANNELS, IdChannel } from "@/lib/id-channels";
 
+// Map DASH channel URLs to proxy route slugs
+const DASH_PROXY_SLUGS: Record<string, string> = {
+  "https://d2xz2v5wuvgur6.cloudfront.net/out/v1/7a69cfc9e135493f87ac4efd63000429/index.mpd": "trans-tv",
+  "https://d2tjypxxy769fn.cloudfront.net/out/v1/0fd7b7d368bc44bc9b4dece20acc3e33/index.mpd": "trans-7",
+  "https://d2tjypxxy769fn.cloudfront.net/out/v1/fd4360b1c12c4375848c8f085fd51d41/index.mpd": "metro-tv",
+};
+
 export default function IdChannelsClient() {
   const [q, setQ] = useState("");
   const [group, setGroup] = useState("all");
@@ -42,7 +49,7 @@ export default function IdChannelsClient() {
 
       {/* Player */}
       {activeChannel && (
-        <HlsPlayer
+        <UnifiedPlayer
           key={activeChannel.url}
           channel={activeChannel}
           onClose={() => setActiveChannel(null)}
@@ -64,6 +71,11 @@ export default function IdChannelsClient() {
                 <div className="truncate text-sm font-medium">{ch.name}</div>
                 <div className="text-xs text-on-surface-variant">{ch.group}</div>
               </div>
+              {ch.type && ch.type !== "hls" && (
+                <span className="shrink-0 rounded-full bg-primary-container/10 px-1.5 py-0.5 text-[9px] font-medium text-primary-container">
+                  {ch.type === "dash" ? "DASH" : "HLS+"}
+                </span>
+              )}
             </div>
           </button>
         ))}
@@ -73,9 +85,10 @@ export default function IdChannelsClient() {
   );
 }
 
-function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => void }) {
+function UnifiedPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<any>(null);
+  const dashRef = useRef<any>(null);
   const [status, setStatus] = useState<"loading" | "playing" | "error">("loading");
 
   useEffect(() => {
@@ -86,55 +99,34 @@ function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => vo
     let destroyed = false;
 
     async function init() {
-      // Native HLS (Safari/iOS)
-      if (v.canPlayType("application/vnd.apple.mpegurl")) {
-        v.src = channel.url;
-        v.addEventListener("loadedmetadata", () => { if (!destroyed) setStatus("playing"); });
-        v.addEventListener("error", () => { if (!destroyed) setStatus("error"); });
+      const streamType = channel.type || "hls";
+
+      // --- DASH streams (Trans TV, Trans 7, Metro TV) ---
+      if (streamType === "dash") {
+        await initDash(v, channel, destroyed, setStatus, dashRef);
         return;
       }
 
-      // hls.js
-      try {
-        const Hls = (await import("hls.js")).default;
-        if (!Hls.isSupported()) { setStatus("error"); return; }
-
-        const hls = new Hls({
-          maxBufferLength: 30,
-          maxMaxBufferLength: 60,
-          liveSyncDurationCount: 3,
-          enableWorker: true,
-          fragLoadingMaxRetry: 4,
-          manifestLoadingMaxRetry: 3,
-        });
-
-        hlsRef.current = hls;
-        hls.attachMedia(v);
-        hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(channel.url));
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          if (destroyed) return;
-          setStatus("playing");
-          v.play().catch(() => {});
-        });
-        hls.on(Hls.Events.ERROR, (_e: any, data: any) => {
-          if (destroyed) return;
-          if (data.fatal) {
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                setStatus("error");
-                break;
-            }
+      // --- HLS proxy streams (RCTI, MNCTV, GTV, iNews) ---
+      // First fetch the real m3u8 URL from our API, then play with hls.js
+      if (streamType === "hls-proxy") {
+        try {
+          const resp = await fetch(channel.url);
+          const data = await resp.json();
+          if (!data.url) {
+            if (!destroyed) setStatus("error");
+            return;
           }
-        });
-      } catch {
-        if (!destroyed) setStatus("error");
+          const m3u8Url = data.url as string;
+          await initHls(v, m3u8Url, destroyed, setStatus, hlsRef);
+        } catch {
+          if (!destroyed) setStatus("error");
+        }
+        return;
       }
+
+      // --- Regular HLS streams (default) ---
+      await initHls(v, channel.url, destroyed, setStatus, hlsRef);
     }
 
     init();
@@ -142,8 +134,9 @@ function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => vo
     return () => {
       destroyed = true;
       if (hlsRef.current) { hlsRef.current.destroy(); hlsRef.current = null; }
+      if (dashRef.current) { dashRef.current.reset(); dashRef.current = null; }
     };
-  }, [channel.url]);
+  }, [channel.url, channel.type]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-outline-variant/30 bg-black">
@@ -184,4 +177,108 @@ function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => vo
       </div>
     </div>
   );
+}
+
+// --- DASH initialization ---
+async function initDash(
+  video: HTMLVideoElement,
+  channel: IdChannel,
+  destroyed: boolean,
+  setStatus: (s: "loading" | "playing" | "error") => void,
+  dashRef: React.MutableRefObject<any>
+) {
+  try {
+    const dashjs = await import("dashjs");
+
+    // Use proxy URL for DASH streams that need Referer header
+    const slug = DASH_PROXY_SLUGS[channel.url];
+    const mpdUrl = slug ? `/api/proxy-dash/${slug}` : channel.url;
+
+    const player = dashjs.MediaPlayer().create();
+    dashRef.current = player;
+
+    player.updateSettings({
+      streaming: {
+        buffer: {
+          fastSwitchEnabled: true,
+          bufferTimeAtTopQuality: 30,
+          bufferTimeAtTopQualityLongForm: 60,
+        },
+      },
+    });
+
+    player.initialize(video, mpdUrl, true);
+
+    player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+      if (!destroyed) setStatus("playing");
+    });
+
+    player.on(dashjs.MediaPlayer.events.ERROR, () => {
+      if (!destroyed) setStatus("error");
+    });
+
+    video.addEventListener("playing", () => { if (!destroyed) setStatus("playing"); });
+    video.addEventListener("error", () => { if (!destroyed) setStatus("error"); });
+  } catch {
+    if (!destroyed) setStatus("error");
+  }
+}
+
+// --- HLS initialization (shared by regular HLS and HLS-proxy) ---
+async function initHls(
+  video: HTMLVideoElement,
+  url: string,
+  destroyed: boolean,
+  setStatus: (s: "loading" | "playing" | "error") => void,
+  hlsRef: React.MutableRefObject<any>
+) {
+  // Native HLS (Safari/iOS)
+  if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    video.src = url;
+    video.addEventListener("loadedmetadata", () => { if (!destroyed) setStatus("playing"); });
+    video.addEventListener("error", () => { if (!destroyed) setStatus("error"); });
+    return;
+  }
+
+  // hls.js
+  try {
+    const Hls = (await import("hls.js")).default;
+    if (!Hls.isSupported()) { setStatus("error"); return; }
+
+    const hls = new Hls({
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      liveSyncDurationCount: 3,
+      enableWorker: true,
+      fragLoadingMaxRetry: 4,
+      manifestLoadingMaxRetry: 3,
+    });
+
+    hlsRef.current = hls;
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(url));
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      if (destroyed) return;
+      setStatus("playing");
+      video.play().catch(() => {});
+    });
+    hls.on(Hls.Events.ERROR, (_e: any, data: any) => {
+      if (destroyed) return;
+      if (data.fatal) {
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            hls.recoverMediaError();
+            break;
+          default:
+            setStatus("error");
+            break;
+        }
+      }
+    });
+  } catch {
+    if (!destroyed) setStatus("error");
+  }
 }
