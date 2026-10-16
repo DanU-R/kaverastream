@@ -109,12 +109,12 @@ function HlsPlayer({ channel, onClose }: { channel: IdChannel; onClose: () => vo
         });
 
         hlsRef.current = hls;
-        hls.attachMedia(video);
+        hls.attachMedia(v);
         hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(channel.url));
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           if (destroyed) return;
           setStatus("playing");
-          video.play().catch(() => {});
+          v.play().catch(() => {});
         });
         hls.on(Hls.Events.ERROR, (_e: any, data: any) => {
           if (destroyed) return;
