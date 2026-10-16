@@ -7,7 +7,7 @@ export interface MatchRow {
   title: string;
   league: string;
   channel?: string;
-  sport: string;
+  sport: string; // normalized: football, basketball, hockey, etc.
   status: "live" | "scheduled" | "finished";
   viewers?: number;
   poster?: string;
@@ -16,25 +16,74 @@ export interface MatchRow {
   source: "ppv" | "esx";
 }
 
-// Sport priority: football first, then others alphabetical
+// Normalize raw category strings to canonical sport keys
+function normalizeSport(raw: string): string {
+  const s = raw.toLowerCase().replace(/[\s/-]+/g, "_");
+  if (s.includes("foot") && !s.includes("rugby")) {
+    if (s.includes("american") || s.includes("amfootball") || s.includes("nfl") || s.includes("cfl") || s.includes("canadian")) return "american_football";
+    if (s.includes("australian")) return "australian_football";
+    if (s.includes("rugby")) return "rugby";
+    return "football";
+  }
+  if (s.includes("basket") || s.includes("nba") || s.includes("nbl")) return "basketball";
+  if (s.includes("hock") || s.includes("nhl") || s.includes("ice_hock")) return "hockey";
+  if (s.includes("baseball") || s.includes("mlb")) return "baseball";
+  if (s.includes("fight") || s.includes("wrest") || s.includes("boxing") || s.includes("mma") || s.includes("ufc") || s.includes("aew") || s.includes("wwe")) return "fight";
+  if (s.includes("race") || s.includes("motogp") || s.includes("f1") || s.includes("formula") || s.includes("wec") || s.includes("nascar") || s.includes("rally")) return "race";
+  if (s.includes("badminton") || s.includes("bwf")) return "badminton";
+  if (s.includes("tennis") || s.includes("atp") || s.includes("wta")) return "tennis";
+  if (s.includes("golf")) return "golf";
+  if (s.includes("24/7") || s.includes("24_7") || s.includes("south_park") || s.includes("cows") || s.includes("family_guy") || s.includes("simpsons") || s.includes("spongebob")) return "entertainment";
+  if (s.includes("concert") || s.includes("music")) return "concert";
+  if (s.includes("arm_wrest")) return "arm_wrestling";
+  if (s.includes("documentar") || s.includes("comedy") || s.includes("skank")) return "entertainment";
+  return "other";
+}
+
 const SPORT_PRIORITY: Record<string, number> = {
   football: 0,
   american_football: 1,
-  amfootball: 1,
-  basketball: 2,
-  hockey: 3,
-  baseball: 4,
-  canadian_football: 5,
-  fight: 6,
-  race: 7,
+  australian_football: 2,
+  rugby: 3,
+  basketball: 4,
+  hockey: 5,
+  baseball: 6,
+  tennis: 7,
   badminton: 8,
-  tennis: 9,
+  golf: 9,
+  fight: 10,
+  race: 11,
+  arm_wrestling: 12,
+  concert: 13,
+  entertainment: 14,
   other: 99,
 };
 
+const SPORT_LABELS: Record<string, string> = {
+  football: "⚽ Sepak Bola",
+  american_football: "🏈 American Football",
+  australian_football: "🏉 AFL",
+  rugby: "🏉 Rugby",
+  basketball: "🏀 Basket",
+  hockey: "🏒 Hoki",
+  baseball: "⚾ Baseball",
+  tennis: "🎾 Tenis",
+  badminton: "🏸 Badminton",
+  golf: "⛳ Golf",
+  fight: "🥊 Fight & Wrestling",
+  race: "🏎️ Racing",
+  arm_wrestling: "💪 Arm Wrestling",
+  concert: "🎤 Concert",
+  entertainment: "📺 Entertainment",
+  other: "📺 Lainnya",
+};
+
 function sportPriority(sport: string): number {
-  const s = sport.toLowerCase().replace(/\s+/g, "_");
-  return SPORT_PRIORITY[s] ?? 99;
+  return SPORT_PRIORITY[sport] ?? 99;
+}
+
+export function sportLabel(sport: string): string {
+  return SPORT_LABELS[sport] || "📺 Lainnya";
 }
 
 export async function loadFeed(): Promise<MatchRow[]> {
@@ -46,12 +95,13 @@ export async function loadFeed(): Promise<MatchRow[]> {
     for (const g of ppvRes.value) {
       for (const s of g.streams ?? []) {
         const live = isLive(s, now);
+        const rawSport = s.category_name || g.category || "";
         rows.push({
           id: "ppv-" + s.id,
           title: s.name,
           league: s.category_name || g.category,
           channel: s.source_tag || undefined,
-          sport: (s.category_name || g.category || "").toLowerCase().replace(/\s+/g, "_"),
+          sport: normalizeSport(rawSport),
           status: live ? "live" : s.always_live ? "live" : "scheduled",
           viewers: typeof s.viewers === "number" ? s.viewers : 0,
           poster: s.poster,
@@ -70,7 +120,7 @@ export async function loadFeed(): Promise<MatchRow[]> {
         id: "esx-" + e.slug,
         title: e.tag,
         league: e.league,
-        sport: e.category.toLowerCase().replace(/\s+/g, "_"),
+        sport: normalizeSport(e.category),
         status: st === "live" ? "live" : st === "upcoming" ? "scheduled" : "finished",
         poster: e.poster,
         href: `/esportex/${e.slug}`,
@@ -80,7 +130,6 @@ export async function loadFeed(): Promise<MatchRow[]> {
     }
   }
 
-  // Sort: live first, then football, then by sport priority, then by kickoff time
   return rows.sort((a, b) => {
     if (a.status === "live" && b.status !== "live") return -1;
     if (a.status !== "live" && b.status === "live") return 1;
@@ -99,9 +148,7 @@ export function scheduledMatches(rows: MatchRow[]): MatchRow[] {
 }
 
 export function footballMatches(rows: MatchRow[]): MatchRow[] {
-  return rows.filter((r) =>
-    r.sport === "football" || r.sport === "american_football" || r.sport === "canadian_football"
-  );
+  return rows.filter((r) => r.sport === "football" || r.sport === "american_football");
 }
 
 export function bySport(rows: MatchRow[]): { sport: string; label: string; matches: MatchRow[] }[] {
@@ -112,27 +159,6 @@ export function bySport(rows: MatchRow[]): { sport: string; label: string; match
     groups.get(key)!.push(r);
   }
   return [...groups.entries()]
-    .map(([sport, matches]) => ({
-      sport,
-      label: sportLabel(sport),
-      matches,
-    }))
+    .map(([sport, matches]) => ({ sport, label: sportLabel(sport), matches }))
     .sort((a, b) => sportPriority(a.sport) - sportPriority(b.sport));
-}
-
-export function sportLabel(sport: string): string {
-  const labels: Record<string, string> = {
-    football: "⚽ Sepak Bola",
-    american_football: "🏈 American Football",
-    amfootball: "🏈 American Football",
-    basketball: "🏀 Basket",
-    hockey: "🏒 Hoki",
-    baseball: "⚾ Baseball",
-    canadian_football: "🏈 CFL",
-    fight: "🥊 Fight",
-    race: "🏎️ Race",
-    badminton: "🏸 Badminton",
-    tennis: "🎾 Tennis",
-  };
-  return labels[sport] || sport.charAt(0).toUpperCase() + sport.slice(1);
 }

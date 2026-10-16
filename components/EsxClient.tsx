@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { EsxEvent, fetchEsxCatalog } from "@/lib/esportex";
+import { sportLabel } from "@/lib/home";
 
 function status(ev: EsxEvent): "live" | "upcoming" | "ended" {
   const now = Date.now();
@@ -14,15 +15,29 @@ function status(ev: EsxEvent): "live" | "upcoming" | "ended" {
   return "live";
 }
 
-const SPORT_ORDER: Record<string, number> = {
-  football: 0, american_football: 1, amfootball: 1, basketball: 2,
-  hockey: 3, baseball: 4, canadian_football: 5, fight: 6, race: 7, badminton: 8, tennis: 9,
-};
+function normalizeSport(raw: string): string {
+  const s = raw.toLowerCase().replace(/[\s/-]+/g, "_");
+  if (s.includes("foot") && !s.includes("rugby")) {
+    if (s.includes("american") || s.includes("nfl") || s.includes("cfl") || s.includes("canadian")) return "american_football";
+    if (s.includes("australian")) return "australian_football";
+    if (s.includes("rugby")) return "rugby";
+    return "football";
+  }
+  if (s.includes("basket") || s.includes("nba") || s.includes("nbl")) return "basketball";
+  if (s.includes("hock") || s.includes("nhl") || s.includes("ice_hock")) return "hockey";
+  if (s.includes("baseball") || s.includes("mlb")) return "baseball";
+  if (s.includes("fight") || s.includes("wrest") || s.includes("boxing") || s.includes("mma") || s.includes("ufc") || s.includes("aew") || s.includes("wwe")) return "fight";
+  if (s.includes("race") || s.includes("motogp") || s.includes("f1") || s.includes("formula") || s.includes("wec") || s.includes("nascar") || s.includes("rally")) return "race";
+  if (s.includes("badminton") || s.includes("bwf")) return "badminton";
+  if (s.includes("tennis") || s.includes("atp") || s.includes("wta")) return "tennis";
+  if (s.includes("golf")) return "golf";
+  return "other";
+}
 
-const SPORT_LABELS: Record<string, string> = {
-  football: "⚽ Sepak Bola", american_football: "🏈 NFL/CFL", amfootball: "🏈 NFL/CFL",
-  basketball: "🏀 Basket", hockey: "🏒 Hoki", baseball: "⚾ Baseball",
-  canadian_football: "🏈 CFL", fight: "🥊 Fight", race: "🏎️ Race", badminton: "🏸 Badminton", tennis: "🎾 Tennis",
+const SPORT_ORDER: Record<string, number> = {
+  football: 0, american_football: 1, australian_football: 2, rugby: 3,
+  basketball: 4, hockey: 5, baseball: 6, tennis: 7, badminton: 8,
+  golf: 9, fight: 10, race: 11, other: 99,
 };
 
 export default function EsxClient() {
@@ -44,7 +59,7 @@ export default function EsxClient() {
 
   const cats = useMemo(() => {
     const s = new Set(events.map((e) => e.category));
-    return [{ value: "all", label: "Semua" }, ...Array.from(s).map((c) => ({ value: c, label: SPORT_LABELS[c] || c }))];
+    return [{ value: "all", label: "Semua" }, ...Array.from(s).map((c) => ({ value: c, label: sportLabel(normalizeSport(c)) }))];
   }, [events]);
 
   const list = useMemo(() => {
@@ -57,9 +72,9 @@ export default function EsxClient() {
       l = l.filter((e) => e.tag.toLowerCase().includes(s) || e.league.toLowerCase().includes(s));
     }
     return [...l].sort((a, b) => {
-      // Football first
-      const sa = SPORT_ORDER[a.category] ?? 99;
-      const sb = SPORT_ORDER[b.category] ?? 99;
+      // Football first (using normalized sport)
+      const sa = SPORT_ORDER[normalizeSport(a.category)] ?? 99;
+      const sb = SPORT_ORDER[normalizeSport(b.category)] ?? 99;
       if (sa !== sb) return sa - sb;
       // Live first
       if (status(a) === "live" && status(b) !== "live") return -1;
